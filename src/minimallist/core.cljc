@@ -12,7 +12,7 @@
 
   ;; Supported node types
   [:and :or
-   :map :map-of :sequence :list :vector :set :tuple :enum
+   :map :map-of :coll-of :sequence :list :vector :set :tuple :enum
    :fn :let :ref
    :cat :alt :repeat])
 
@@ -59,7 +59,6 @@
 (defn left-overs
   "Returns a sequence of possible left-overs from the seq-data after matching the model with it."
   [context model seq-data]
-  ;(prn 'left-overs (:type model) seq-data)
   (case (:type model)
     :cat (cat-left-overs context model seq-data)
     :alt (alt-left-overs context model seq-data)
@@ -73,7 +72,6 @@
   ([model data]
    (valid? {} model data))
   ([context model data]
-   ;(prn 'valid? (:type model) data)
    (case (:type model)
      :and (every? (fn [entry]
                     (valid? context (:model entry) data))
@@ -89,6 +87,8 @@
      :map-of (and (map? data)
                   (every? (partial valid? context (-> model :key :model)) (keys data))
                   (every? (partial valid? context (-> model :value :model)) (vals data)))
+     :coll-of (and (coll? data)
+                   (every? (partial valid? context (:model model)) data))
      :sequence (and (sequential? data)
                     (every? (partial valid? context (:model model)) data))
      :list (and (list? data)

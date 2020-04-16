@@ -46,6 +46,13 @@
                    [{} {:a 1, :b 2}]
                    [{:a 1, :b "2"} [[:a 1] [:b 2]] {true 1, false 2}]
 
+                   ;; coll-of
+                   {:type :coll-of
+                    :model {:type :fn
+                            :fn int?}}
+                   ['(1 2 3) [1 2 3] `(1 2 ~3) #{1 2 3}]
+                   ['(1 :a) {:a 1, :b 2, :c 3}]
+
                    ;; sequence
                    {:type :sequence
                     :model {:type :fn
