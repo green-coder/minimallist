@@ -112,8 +112,40 @@
   [model data])
 
 (defn conform
-  "Returns a detailed description of the data's structure, in the shape of the model."
-  [model data])
+  "Returns a detailed description of the data's structure, in the shape of the model.
+   No validation check is performed, the data is assumed to match the model already. YOLO."
+  ([model data]
+   (conform {} model data))
+  ([context model data]
+   (case (:type model)
+     :and (reduce (fn [data entry]
+                    (conform context (:model entry) data))
+                  data
+                  (:entries model))
+     :or (reduce (fn [_ entry]
+                   (when (valid? context (:model entry) data)
+                     (reduced (if (contains? entry :key)
+                                [(:key entry) (conform context (:model entry) data)]
+                                data))))
+                 nil
+                 (:entries model))
+     :map (into {}
+                (map (fn [{:keys [key model]}]
+                       [key (conform context model (get data key))]))
+                (:entries model))
+     :map-of (into {}
+                   (map (fn [[k v]]
+                          [(conform context (-> model :key :model) k)
+                           (conform context (-> model :value :model) v)]))
+                   data)
+     (:sequence :list :vector :set) (mapv (partial conform context (:model model)) data)
+     :tuple (mapv (fn [entry data] (conform context (:model entry) data))
+                  (:entries model)
+                  data)
+     (:enum :fn) data
+     :let (conform (merge context (:bindings model)) (:body model) data)
+     :ref (conform context (get context (:ref model)) data)
+     (:cat :alt :repeat) data)))
 
 (defn unform
   "Returns a data which matches a description, in the shape represented by the model."
