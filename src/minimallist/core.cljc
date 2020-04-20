@@ -112,40 +112,51 @@
   [model data])
 
 (defn conform
-  "Returns a detailed description of the data's structure, in the shape of the model.
-   No validation check is performed, the data is assumed to match the model already. YOLO."
+  "Returns a sequence of possible descriptions of the data's structure, in the shape of the model."
   ([model data]
    (conform {} model data))
   ([context model data]
    (case (:type model)
      :and (reduce (fn [data entry]
-                    (conform context (:model entry) data))
-                  data
+                    (mapcat (partial conform context (:model entry)) data))
+                  [data]
                   (:entries model))
-     :or (reduce (fn [_ entry]
-                   (when (valid? context (:model entry) data)
-                     (reduced (if (contains? entry :key)
-                                [(:key entry) (conform context (:model entry) data)]
-                                data))))
-                 nil
+     :or (mapcat (fn [entry]
+                   (let [results (conform context (:model entry) data)]
+                     (if (contains? entry :key)
+                       (map (fn [result] [(:key entry) result]) results)
+                       results)))
                  (:entries model))
-     :map (into {}
-                (map (fn [{:keys [key model]}]
-                       [key (conform context model (get data key))]))
-                (:entries model))
-     :map-of (into {}
-                   (map (fn [[k v]]
-                          [(conform context (-> model :key :model) k)
-                           (conform context (-> model :value :model) v)]))
-                   data)
-     (:sequence :list :vector :set) (mapv (partial conform context (:model model)) data)
-     :tuple (mapv (fn [entry data] (conform context (:model entry) data))
-                  (:entries model)
-                  data)
-     (:enum :fn) data
+     :map (if (map? data)
+            (let [conformed-entries (map (fn [{:keys [key model]}]
+                                           [key (conform context model (get data key))])
+                                         (:entries model))]
+              (reduce (fn [results [key conformed-values]]
+                        (mapcat (fn [result]
+                                  (map (fn [conformed-value]
+                                         (assoc result key conformed-value))
+                                       conformed-values))
+                                results))
+                      [{}]
+                      conformed-entries))
+            [])
+     ;:map-of (and (map? data)
+     ;             (every? (partial valid? context (-> model :key :model)) (keys data))
+     ;             (every? (partial valid? context (-> model :value :model)) (vals data)))
+     :map-of (if (map? data)
+               (let [conformed-entries (map (fn []))])
+               [])
+     :coll-of nil
+     :sequence nil
+     :list nil
+     :vector nil
+     :set nil
+     :tuple nil
+     :enum (if (contains? (:values model) data) [data] [])
+     :fn (if ((:fn model) data) [data] [])
      :let (conform (merge context (:bindings model)) (:body model) data)
      :ref (conform context (get context (:ref model)) data)
-     (:cat :alt :repeat) data)))
+     (:cat :alt :repeat) nil)))
 
 (defn unform
   "Returns a data which matches a description, in the shape represented by the model."
@@ -163,4 +174,21 @@
   (defn visit [model travel-plan data])
 
   ;; Not in the core, not urgent, maybe not needed.
-  (defn transform [model transformer data]))
+  (defn transform [model transformer data])
+
+
+  (for [a [:a :b :c]
+        b [:x :y :z]]
+    [a b])
+
+  (mapcat (fn [a]
+            (map (fn [b] [a b]) [:x :y :z]))
+          [:a :b :c])
+
+  (mapcat (fn [a]
+            (map (fn [b] [a b]) b-coll))
+          a-coll)
+
+  (mapcat (fn [a]
+            (map (fn [ac] [a ac]) acc))
+          a-coll))
