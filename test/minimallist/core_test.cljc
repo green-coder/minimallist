@@ -1,10 +1,27 @@
 (ns minimallist.core-test
   (:require [clojure.test :refer [deftest testing is are]]
-            [minimallist.core :refer [valid? explain conform unform]]
+            [minimallist.core :refer [valid? explain describe undescribe]]
             [clojure.spec.alpha :as s]))
 
 (deftest valid?-test
-  (let [test-data [;; and
+  (let [test-data [;; fn
+                   {:type :fn
+                    :fn #(= 1 %)}
+                   [1]
+                   [2]
+
+                   ;; enum
+                   {:type :enum
+                    :values #{1 "2" :3}}
+                   [1 "2" :3]
+                   [[1] 2 true false nil]
+
+                   {:type :enum
+                    :values #{nil false}}
+                   [nil false]
+                   [true '()]
+
+                   ;; and
                    {:type :and
                     :entries [{:model {:type :fn
                                        :fn vector?}}
@@ -92,23 +109,6 @@
                    ['(1 "2") [1 "2"] `(1 ~"2")]
                    [#{1 "a"} [1 "2" :3]]
 
-                   ;; enum
-                   {:type :enum
-                    :values #{1 "2" :3}}
-                   [1 "2" :3]
-                   [[1] 2 true false nil]
-
-                   {:type :enum
-                    :values #{nil false}}
-                   [nil false]
-                   [true '()]
-
-                   ;; fn
-                   {:type :fn
-                    :fn #(= 1 %)}
-                   [1]
-                   [2]
-
                    ;; let
                    {:type :let
                     :bindings {'pos-even? {:type :and
@@ -194,87 +194,126 @@
       (doseq [data invalid-coll]
         (is (not (valid? model data)))))))
 
+(defn- trimmed-description [description]
+  (clojure.walk/postwalk
+    (fn [x]
+      (if (and (map? x)
+               (every? (partial contains? x) [:context :model]))
+        (-> x
+            (dissoc :context)
+            (update :model select-keys [:type]))
+        x))
+    description))
+
+(comment
+  (-> (describe {:type :and
+                 :entries [{:model {:type :fn
+                                    :fn vector?}}
+                           {:model {:type :fn
+                                    :fn #(= (count %) 3)}}]}
+                [:a :b :c])
+      (trimmed-description))
+
+  (-> (describe {:type :fn
+                 :fn #(= 1 %)}
+                1)
+      (trimmed-description)))
+
 (deftest conform-test
-  (let [test-data [;; and
-                   {:type :and
-                    :entries [{:model {:type :fn
-                                       :fn vector?}}
-                              {:model {:type :fn
-                                       :fn #(= (count %) 3)}}]}
-                   [[[:a :b :c] [[:a :b :c]]]]
-
-                   ;; or
-                   {:type :or
-                    :entries [{:model {:type :fn
-                                       :fn int?}}
-                              {:model {:type :fn
-                                       :fn string?}}]}
-                   [[7 [7]]
-                    ["coco" ["coco"]]]
-
-                   ;; or with keys
-                   {:type :or
-                    :entries [{:key :id
-                               :model {:type :fn
-                                       :fn int?}}
-                              {:key :name
-                               :model {:type :fn
-                                       :fn string?}}]}
-                   [[7 [[:id 7]]]
-                    ["coco" [[:name "coco"]]]]
-
-                   ;; map
-                   {:type :map
-                    :entries [{:key :a
-                               :model {:type :fn
-                                       :fn int?}}
-                              {:key :b
-                               :model {:type :or
-                                       :entries [{:key :id
-                                                  :model {:type :fn
-                                                          :fn int?}}
-                                                 {:key :name
-                                                  :model {:type :fn
-                                                          :fn string?}}]}}]}
-                   [[{:a 1, :b 2} [{:a 1, :b [:id 2]}]]
-                    [{:a 1, :b "foo"} [{:a 1, :b [:name "foo"]}]]]
-
-                   ;; map with multiple matches on its values
-                   {:type :map
-                    :entries [{:key :number
-                               :model {:type :or
-                                       :entries [{:key :id
-                                                  :model {:type :fn
-                                                          :fn int?}}
-                                                 {:key :age
-                                                  :model {:type :fn
-                                                          :fn int?}}]}}
-                              {:key :text
-                               :model {:type :or
-                                       :entries [{:key :title
-                                                  :model {:type :fn
-                                                          :fn string?}}
-                                                 {:key :description
-                                                  :model {:type :fn
-                                                          :fn string?}}]}}]}
-                   [[{:number 20, :text "hi"} [{:number [:id
-                                                         20]
-                                                :text   [:title
-                                                         "hi"]}
-                                               {:number [:id
-                                                         20]
-                                                :text   [:description
-                                                         "hi"]}
-                                               {:number [:age
-                                                         20]
-                                                :text   [:title
-                                                         "hi"]}
-                                               {:number [:age
-                                                         20]
-                                                :text   [:description
-                                                         "hi"]}]]
-                    [{:number "foo"} []]]]]
-
+  (let [test-data []]
+                   ;; fn
+                   ;{:type :fn
+                   ; :fn #(= 1 %)}
+                   ;[[1 {:data 1
+                   ;     :valid? true}]]
+                   ;
+                   ;;;; enum
+                   ;;{:type :enum
+                   ;; :values #{1 "2" :3}}
+                   ;;[[[1 "2" :3] [1 "2" :3]]]
+                   ;
+                   ;;; and
+                   ;{:type :and
+                   ; :entries [{:model {:type :fn
+                   ;                    :fn vector?}}
+                   ;           {:model {:type :fn
+                   ;                    :fn #(= (count %) 3)}}]}
+                   ;[[[:a :b :c]
+                   ;  {:data [:a :b :c],
+                   ;   :model {:type :and}}]]]]
+                   ;
+                   ;;; or
+                   ;{:type :or
+                   ; :entries [{:model {:type :fn
+                   ;                    :fn int?}}
+                   ;           {:model {:type :fn
+                   ;                    :fn string?}}]}
+                   ;[[7 [7]]
+                   ; ["coco" ["coco"]]]
+                   ;
+                   ;;; or with keys
+                   ;{:type :or
+                   ; :entries [{:key :id
+                   ;            :model {:type :fn
+                   ;                    :fn int?}}
+                   ;           {:key :name
+                   ;            :model {:type :fn
+                   ;                    :fn string?}}]}
+                   ;[[7 [[:id 7]]]
+                   ; ["coco" [[:name "coco"]]]]
+                   ;
+                   ;;; map
+                   ;{:type :map
+                   ; :entries [{:key :a
+                   ;            :model {:type :fn
+                   ;                    :fn int?}}
+                   ;           {:key :b
+                   ;            :model {:type :or
+                   ;                    :entries [{:key :id
+                   ;                               :model {:type :fn
+                   ;                                       :fn int?}}
+                   ;                              {:key :name
+                   ;                               :model {:type :fn
+                   ;                                       :fn string?}}]}}]}
+                   ;[[{:a 1, :b 2} [{:a 1, :b [:id 2]}]]
+                   ; [{:a 1, :b "foo"} [{:a 1, :b [:name "foo"]}]]]
+                   ;
+                   ;;; map with multiple matches on its values
+                   ;{:type :map
+                   ; :entries [{:key :number
+                   ;            :model {:type :or
+                   ;                    :entries [{:key :id
+                   ;                               :model {:type :fn
+                   ;                                       :fn int?}}
+                   ;                              {:key :age
+                   ;                               :model {:type :fn
+                   ;                                       :fn int?}}]}}
+                   ;           {:key :text
+                   ;            :model {:type :or
+                   ;                    :entries [{:key :title
+                   ;                               :model {:type :fn
+                   ;                                       :fn string?}}
+                   ;                              {:key :description
+                   ;                               :model {:type :fn
+                   ;                                       :fn string?}}]}}]}
+                   ;[[{:number 20, :text "hi"} [{:number [:id
+                   ;                                      20]
+                   ;                             :text   [:title
+                   ;                                      "hi"]}
+                   ;                            {:number [:id
+                   ;                                      20]
+                   ;                             :text   [:description
+                   ;                                      "hi"]}
+                   ;                            {:number [:age
+                   ;                                      20]
+                   ;                             :text   [:title
+                   ;                                      "hi"]}
+                   ;                            {:number [:age
+                   ;                                      20]
+                   ;                             :text   [:description
+                   ;                                      "hi"]}]]
+                   ; [{:number "foo"} []]]]]
+                   ;
                    ;;; map-of
                    ;{:type :map-of
                    ; :key {:model {:type :fn
@@ -314,16 +353,6 @@
                    ;           {:model {:type :fn
                    ;                    :fn string?}}]}
                    ;[['(1 "2") [1 "2"]]]
-                   ;
-                   ;;; enum
-                   ;{:type :enum
-                   ; :values #{1 "2" :3}}
-                   ;[[[1 "2" :3] [1 "2" :3]]]
-                   ;
-                   ;;; fn
-                   ;{:type :fn
-                   ; :fn #(= 1 %)}
-                   ;[[1 1]]
                    ;
                    ;;; let
                    ;{:type :let
@@ -405,7 +434,8 @@
 
     (doseq [[model data-description-pairs] (partition 2 test-data)]
       (doseq [[data description] data-description-pairs]
-        (is (= (conform model data) description))))))
+        (is (= (trimmed-description (describe model data))
+               description))))))
 
 
 (comment

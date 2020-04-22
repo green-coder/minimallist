@@ -11,9 +11,10 @@
                       :name int?}}]}
 
   ;; Supported node types
-  [:and :or
-   :map :map-of :coll-of :sequence :list :vector :set :tuple :enum
-   :fn :let :ref
+  [:fn :enum
+   :and :or
+   :map :map-of :coll-of :sequence :list :vector :set :tuple
+   :let :ref
    :cat :alt :repeat])
 
 ;;---
@@ -73,6 +74,8 @@
    (valid? {} model data))
   ([context model data]
    (case (:type model)
+     :fn (boolean ((:fn model) data))
+     :enum (contains? (:values model) data)
      :and (every? (fn [entry]
                     (valid? context (:model entry) data))
                   (:entries model))
@@ -99,9 +102,7 @@
                (every? (partial valid? context (:model model)) data))
      :tuple (and (sequential? data)
                  (= (count (:entries model)) (count data))
-                 (every? identity (map valid? context (:entries model) data)))
-     :enum (contains? (:values model) data)
-     :fn (boolean ((:fn model) data))
+                 (every? identity (map valid? context (:entries model) data))) ; bug
      :let (valid? (merge context (:bindings model)) (:body model) data)
      :ref (valid? context (get context (:ref model)) data)
      (:cat :alt :repeat) (and (sequential? data)
@@ -111,55 +112,111 @@
   "Returns a structure describing what parts of the data are not matching the model."
   [model data])
 
-(defn conform
-  "Returns a sequence of possible descriptions of the data's structure, in the shape of the model."
-  ([model data]
-   (conform {} model data))
-  ([context model data]
-   (case (:type model)
-     :and (reduce (fn [data entry]
-                    (mapcat (partial conform context (:model entry)) data))
-                  [data]
-                  (:entries model))
-     :or (mapcat (fn [entry]
-                   (let [results (conform context (:model entry) data)]
-                     (if (contains? entry :key)
-                       (map (fn [result] [(:key entry) result]) results)
-                       results)))
-                 (:entries model))
-     :map (if (map? data)
-            (let [conformed-entries (map (fn [{:keys [key model]}]
-                                           [key (conform context model (get data key))])
-                                         (:entries model))]
-              (reduce (fn [results [key conformed-values]]
-                        (mapcat (fn [result]
-                                  (map (fn [conformed-value]
-                                         (assoc result key conformed-value))
-                                       conformed-values))
-                                results))
-                      [{}]
-                      conformed-entries))
-            [])
-     ;:map-of (and (map? data)
-     ;             (every? (partial valid? context (-> model :key :model)) (keys data))
-     ;             (every? (partial valid? context (-> model :value :model)) (vals data)))
-     :map-of (if (map? data)
-               (let [conformed-entries (map (fn []))])
-               [])
-     :coll-of nil
-     :sequence nil
-     :list nil
-     :vector nil
-     :set nil
-     :tuple nil
-     :enum (if (contains? (:values model) data) [data] [])
-     :fn (if ((:fn model) data) [data] [])
-     :let (conform (merge context (:bindings model)) (:body model) data)
-     :ref (conform context (get context (:ref model)) data)
-     (:cat :alt :repeat) nil)))
+(defn- valid-description? [description]
+  (contains? description :data))
 
-(defn unform
-  "Returns a data which matches a description, in the shape represented by the model."
+;; My hardship comes from the implementation of :and and :or,
+;; the rest is a piece of cake.
+
+;; There are 2 kinds of predicates:
+;; - structural (they test the existence of a structure),
+;; - non-structural (they test properties on structureless values).
+
+;; [:map :map-of] can all be defined using :map, with the optional attributes:
+;; - :key {:model ...}
+;; - :value {:model ...}
+
+;; [:sequence :list :vector :tuple] can all be defined
+;; using :sequence, with the attributes:
+;; - :coll-type with values in #{:list :vector}
+;; - :count with a number value
+
+;; :set can have the attribute:
+;; - :count with a number value
+
+;; Structural predicates can be predefined extensively:
+;; [:map :sequence :set]
+
+(defn describe
+  "Returns a descriptions of the data's structure using a hierarchy of hash-maps.
+   In places where the data does not match the model, the hash-map won't have a :data entry."
+  ([model data]
+   (describe {} model data))
+  ([context model data]
+   (-> (case (:type model)
+         :fn (if ((:fn model) data)
+               {:data data}
+               {})
+         :enum (if (contains? (:values model) data)
+                 {:data data}
+                 {})
+         :and (reduce (fn [description entry]
+                        (let [description (describe context (:model entry) (:data description))]
+                          (if (valid-description? description)
+                            description
+                            (reduced {}))))
+                      {:data data}
+                      (:entries model))
+         :or {:data (into {}
+                          (comp (map (fn [entry]
+                                       [(:key entry) (describe context (:model entry) data)]))
+                                (filter (comp valid-description? second)))
+                          (:entries model))}
+         :map (if (and (map? data)
+                       (every? (fn [entry]
+                                 (contains? data (:key entry)))
+                               (:entries model)))
+                {:data (into {}
+                             (map (fn [entry]
+                                    [(:key entry) (describe context (:model entry) data)]))
+                             (:entries model))}
+                {})
+         :map-of (if (map? data)
+                   {:data (into {}
+                                (map (fn [[k v]]
+                                       [(describe context (-> model :key :model) k)
+                                        (describe context (-> model :value :model) v)]))
+                                data)}
+                   {})
+         :coll-of (if (coll? data)
+                    {:data (into (empty data)
+                                 (map (partial describe context (:model model)))
+                                 data)}
+                    {})
+         :sequence (if (sequential? data)
+                     {:data (into []
+                                  (map (partial describe context (:model model)))
+                                  data)}
+                     {})
+         :list (if (list? data)
+                 {:data (into []
+                              (map (partial describe context (:model model)))
+                              data)}
+                 {})
+         :vector (if (vector? data)
+                   {:data (into []
+                                (map (partial describe context (:model model)))
+                                data)}
+                   {})
+         :set (if (set? data)
+                {:data (into #{}
+                             (map (partial describe context (:model model)))
+                             data)}
+                {})
+         :tuple (if (and (sequential? data)
+                         (= (count (:entries model)) (count data)))
+                  {:data (into []
+                               (map (partial describe context (:model model)))
+                               data)}
+                  {})
+         :let (describe (merge context (:bindings model)) (:body model) data)
+         :ref (describe context (get context (:ref model)) data)
+         (:cat :alt :repeat) nil)
+       (assoc :context context
+              :model model))))
+
+(defn undescribe
+  "Returns a data which matches a description."
   [model description])
 
 ;;---
