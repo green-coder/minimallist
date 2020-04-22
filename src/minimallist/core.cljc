@@ -1,4 +1,5 @@
-(ns minimallist.core)
+(ns minimallist.core
+  #?(:cljs [:require-macros [minimallist.core :refer [implies]]]))
 
 (comment
   ;; Format which *may* be used by the end user later
@@ -13,11 +14,16 @@
   ;; Supported node types
   [:fn :enum
    :and :or
-   :map :map-of :coll-of :sequence :list :vector :set :tuple
+   :set :map :sequence
    :let :ref
    :cat :alt :repeat])
 
 ;;---
+
+(defmacro implies [condition & expressions]
+  `(if ~condition
+     (do ~@expressions)
+     true))
 
 (declare valid?)
 (declare left-overs)
@@ -82,27 +88,32 @@
      :or (boolean (some (fn [entry]
                           (valid? context (:model entry) data))
                         (:entries model)))
-     :map (and (map? data)
-               (every? (fn [entry]
-                         (and (contains? data (:key entry))
-                              (valid? context (:model entry) (get data (:key entry)))))
-                       (:entries model)))
-     :map-of (and (map? data)
-                  (every? (partial valid? context (-> model :key :model)) (keys data))
-                  (every? (partial valid? context (-> model :value :model)) (vals data)))
-     :coll-of (and (coll? data)
-                   (every? (partial valid? context (:model model)) data))
-     :sequence (and (sequential? data)
-                    (every? (partial valid? context (:model model)) data))
-     :list (and (list? data)
-                (every? (partial valid? context (:model model)) data))
-     :vector (and (vector? data)
-                  (every? (partial valid? context (:model model)) data))
      :set (and (set? data)
                (every? (partial valid? context (:model model)) data))
-     :tuple (and (sequential? data)
-                 (= (count (:entries model)) (count data))
-                 (every? identity (map valid? context (:entries model) data))) ; bug
+     :map (and (map? data)
+               (implies (contains? model :entries)
+                        (every? (fn [entry]
+                                  (and (contains? data (:key entry))
+                                       (valid? context (:model entry) (get data (:key entry)))))
+                                (:entries model)))
+               (implies (contains? model :keys)
+                        (every? (partial valid? context (-> model :keys :model)) (keys data)))
+               (implies (contains? model :values)
+                        (every? (partial valid? context (-> model :values :model)) (vals data))))
+     :sequence (and (sequential? data)
+                    (({:any any?
+                       :list list?
+                       :vector vector?} (:coll-type model :any)) data)
+                    (implies (contains? model :model)
+                             (every? (partial valid? context (:model model)) data))
+                    (implies (contains? model :count)
+                             (= (:count model) (count data)))
+                    (implies (contains? model :entries)
+                             (and (= (count (:entries model)) (count data))
+                                  (every? true? (map (fn [entry data-element]
+                                                       (valid? context (:model entry) data-element))
+                                                     (:entries model)
+                                                     data)))))
      :let (valid? (merge context (:bindings model)) (:body model) data)
      :ref (valid? context (get context (:ref model)) data)
      (:cat :alt :repeat) (and (sequential? data)
@@ -122,6 +133,9 @@
 ;; - structural (they test the existence of a structure),
 ;; - non-structural (they test properties on structureless values).
 
+;; :set can have the attribute:
+;; - :count with a number value
+
 ;; [:map :map-of] can all be defined using :map, with the optional attributes:
 ;; - :key {:model ...}
 ;; - :value {:model ...}
@@ -131,11 +145,14 @@
 ;; - :coll-type with values in #{:list :vector}
 ;; - :count with a number value
 
-;; :set can have the attribute:
-;; - :count with a number value
-
 ;; Structural predicates can be predefined extensively:
-;; [:map :sequence :set]
+;; [:set :map :sequence]
+
+;; To be considered:
+;; - using :alt instead of :or when testing on different kind of structures,
+;;   in other word:
+;;   - :or is only for non-structural models, (e.g. [:or odd? prime?])
+;;   - :alt only for structural models (e.g. [:alt [:my-set set?] [my-vec vector?]])
 
 (defn describe
   "Returns a descriptions of the data's structure using a hierarchy of hash-maps.
