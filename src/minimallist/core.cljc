@@ -15,8 +15,8 @@
   [:fn :enum
    :and :or
    :set :map :sequence
-   :let :ref
-   :cat :alt :repeat])
+   :alt :cat :repeat
+   :let :ref])
 
 ;;---
 
@@ -80,14 +80,14 @@
    (valid? {} model data))
   ([context model data]
    (case (:type model)
-     :fn (boolean ((:fn model) data))
+     :fn ((:fn model) data)
      :enum (contains? (:values model) data)
      :and (every? (fn [entry]
                     (valid? context (:model entry) data))
                   (:entries model))
-     :or (boolean (some (fn [entry]
-                          (valid? context (:model entry) data))
-                        (:entries model)))
+     :or (some (fn [entry]
+                 (valid? context (:model entry) data))
+               (:entries model))
      :set (and (set? data)
                (every? (partial valid? context (:model model)) data))
      :map (and (map? data)
@@ -114,17 +114,14 @@
                                                        (valid? context (:model entry) data-element))
                                                      (:entries model)
                                                      data)))))
+     (:alt :cat :repeat) (and (sequential? data)
+                              (some nil? (left-overs context model (seq data))))
      :let (valid? (merge context (:bindings model)) (:body model) data)
-     :ref (valid? context (get context (:ref model)) data)
-     (:cat :alt :repeat) (and (sequential? data)
-                              (boolean (some nil? (left-overs context model (seq data))))))))
+     :ref (valid? context (get context (:ref model)) data))))
 
 (defn explain
   "Returns a structure describing what parts of the data are not matching the model."
   [model data])
-
-(defn- valid-description? [description]
-  (contains? description :data))
 
 ;; My hardship comes from the implementation of :and and :or,
 ;; the rest is a piece of cake.
@@ -133,20 +130,11 @@
 ;; - structural (they test the existence of a structure),
 ;; - non-structural (they test properties on structureless values).
 
-;; :set can have the attribute:
-;; - :count with a number value
-
-;; [:map :map-of] can all be defined using :map, with the optional attributes:
-;; - :key {:model ...}
-;; - :value {:model ...}
-
-;; [:sequence :list :vector :tuple] can all be defined
-;; using :sequence, with the attributes:
-;; - :coll-type with values in #{:list :vector}
-;; - :count with a number value
-
 ;; Structural predicates can be predefined extensively:
-;; [:set :map :sequence]
+;; [:set :map :sequence :alt :cat :repeat]
+
+;; Non-structural predicates are everything else, for instance:
+;; [:fn :enum :and :or]
 
 ;; To be considered:
 ;; - using :alt instead of :or when testing on different kind of structures,
@@ -155,82 +143,77 @@
 ;;   - :alt only for structural models (e.g. [:alt [:my-set set?] [my-vec vector?]])
 
 (defn describe
-  "Returns a descriptions of the data's structure using a hierarchy of hash-maps.
-   In places where the data does not match the model, the hash-map won't have a :data entry."
+  "Returns a descriptions of the data's structure using a hierarchy of hash-maps."
   ([model data]
    (describe {} model data))
   ([context model data]
    (-> (case (:type model)
-         :fn (if ((:fn model) data)
-               {:data data}
-               {})
-         :enum (if (contains? (:values model) data)
-                 {:data data}
-                 {})
-         :and (reduce (fn [description entry]
-                        (let [description (describe context (:model entry) (:data description))]
-                          (if (valid-description? description)
-                            description
-                            (reduced {}))))
-                      {:data data}
-                      (:entries model))
-         :or {:data (into {}
-                          (comp (map (fn [entry]
-                                       [(:key entry) (describe context (:model entry) data)]))
-                                (filter (comp valid-description? second)))
-                          (:entries model))}
-         :map (if (and (map? data)
-                       (every? (fn [entry]
-                                 (contains? data (:key entry)))
-                               (:entries model)))
-                {:data (into {}
-                             (map (fn [entry]
-                                    [(:key entry) (describe context (:model entry) data)]))
-                             (:entries model))}
-                {})
-         :map-of (if (map? data)
-                   {:data (into {}
-                                (map (fn [[k v]]
-                                       [(describe context (-> model :key :model) k)
-                                        (describe context (-> model :value :model) v)]))
-                                data)}
-                   {})
-         :coll-of (if (coll? data)
-                    {:data (into (empty data)
-                                 (map (partial describe context (:model model)))
-                                 data)}
-                    {})
-         :sequence (if (sequential? data)
-                     {:data (into []
-                                  (map (partial describe context (:model model)))
-                                  data)}
-                     {})
-         :list (if (list? data)
-                 {:data (into []
-                              (map (partial describe context (:model model)))
-                              data)}
-                 {})
-         :vector (if (vector? data)
-                   {:data (into []
-                                (map (partial describe context (:model model)))
-                                data)}
-                   {})
+         :fn {:valid? ((:fn model) data)}
+         :enum {:valid? (contains? (:values model) data)}
+         :and {:valid? (every? (fn [entry]
+                                 (:valid? (describe context (:model entry) data)))
+                               (:entries model))}
+         :or {:valid? (some (fn [entry]
+                              (:valid? (describe context (:model entry) data)))
+                            (:entries model))}
          :set (if (set? data)
-                {:data (into #{}
-                             (map (partial describe context (:model model)))
-                             data)}
-                {})
-         :tuple (if (and (sequential? data)
-                         (= (count (:entries model)) (count data)))
-                  {:data (into []
-                               (map (partial describe context (:model model)))
-                               data)}
-                  {})
+                (let [entries (map (partial describe context (:model model)) data)]
+                  {:valid?  (every? :valid? entries)
+                   :entries entries})
+                {:valid? false})
+         :map (if (map? data)
+                (let [entries (when (or (contains? model :entries)
+                                        (contains? model :values))
+                                (into {}
+                                      (map (fn [entry]
+                                             [(:key entry)
+                                              (if (contains? data (:key entry))
+                                                (describe context (:model entry) (get data (:key entry)))
+                                                {:missing? true})]))
+                                      (:entries model)))]
+                  (cond-> {:valid? (and (implies (contains? model :entries)
+                                                 (every? :valid? entries))
+                                        (implies (contains? model :keys)
+                                                 (every? (fn [key]
+                                                           (:valid? (describe context (-> model :keys :model) key)))
+                                                         (keys data)))
+                                        (implies (contains? model :values)
+                                                 (every? (fn [key]
+                                                           (:valid? (if (contains? entries key)
+                                                                      (get entries key)
+                                                                      (describe context (-> model :values :model) (get data key)))))
+                                                         (keys data))))}
+                          (contains? model :entries) (assoc :entries entries)))
+                {:valid? false})
+         :sequence (if (sequential? data)
+                     (let [entries (cond
+                                     (contains? model :model) (map (fn [data-element]
+                                                                     (describe context (:model model) data-element))
+                                                                   data)
+                                     (contains? model :entries) (map (fn [entry data-element]
+                                                                       (describe context (:model entry) data-element))
+                                                                     (:entries model)
+                                                                     data)
+                                     :else nil)]
+                       (cond-> {:valid? (and (({:any any?
+                                                :list list?
+                                                :vector vector?} (:coll-type model :any)) data)
+                                             (implies (contains? model :model)
+                                                      (every? :valid entries))
+                                             (implies (contains? model :count)
+                                                      (= (:count model) (count data)))
+                                             (implies (contains? model :entries)
+                                                      (and (= (count (:entries model)) (count data))
+                                                           (every? :valid? entries))))}
+                               (or (contains? model :model)
+                                   (contains? model :entries)) (assoc :entries (into #{} entries))))
+                     {:valid? false})
+         (:alt :cat :repeat) nil
          :let (describe (merge context (:bindings model)) (:body model) data)
-         :ref (describe context (get context (:ref model)) data)
-         (:cat :alt :repeat) nil)
-       (assoc :context context
-              :model model))))
+         :ref (describe context (get context (:ref model)) data))
+       (assoc :context context ;; maybe: (post-fn description context model data)
+              :model model
+              :data data))))
 
 (defn undescribe
   "Returns a data which matches a description."
