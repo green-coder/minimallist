@@ -111,17 +111,15 @@
                    ['(1 "2") [1 "2"] `(1 ~"2")]
                    [#{1 "a"} [1 "2" :3]]
 
-                   ;; let
-                   {:type :let
-                    :bindings {'pos-even? {:type :and
-                                           :entries [{:model {:type :fn
-                                                              :fn pos-int?}}
-                                                     {:model {:type :fn
-                                                              :fn even?}}]}}
-                    :body {:type :ref
-                           :ref 'pos-even?}}
-                   [2 4]
-                   [-2 -1 0 1 3]
+                   ;; alt
+                   {:type :alt
+                    :entries [{:model {:type :fn
+                                       :fn int?}}
+                              {:model {:type :cat
+                                       :entries [{:model {:type :fn
+                                                          :fn string?}}]}}]}
+                   [[1] ["1"]]
+                   [1 "1" :1 [:1]]
 
                    ;; cat of cat, the inner cat is implicitly inlined
                    {:type :cat
@@ -143,16 +141,6 @@
                                                           :fn int?}}]}}]}
                    [[1 [2]]]
                    [[1] [1 2]]
-
-                   ;; alt
-                   {:type :alt
-                    :entries [{:model {:type :fn
-                                       :fn int?}}
-                              {:model {:type :cat
-                                       :entries [{:model {:type :fn
-                                                          :fn string?}}]}}]}
-                   [[1] ["1"]]
-                   [1 "1" :1 [:1]]
 
                    ;; repeat
                    {:type :repeat
@@ -188,7 +176,19 @@
                                       {:model {:type :fn
                                                :fn string?}}]}}
                    [[1 "a"] [1 "a" 2 "b"]]
-                   [[] [1] [1 2] [1 "a" 2 "b" 3 "c"]]]]
+                   [[] [1] [1 2] [1 "a" 2 "b" 3 "c"]]
+
+                   ;; let
+                   {:type :let
+                    :bindings {'pos-even? {:type :and
+                                           :entries [{:model {:type :fn
+                                                              :fn pos-int?}}
+                                                     {:model {:type :fn
+                                                              :fn even?}}]}}
+                    :body {:type :ref
+                           :ref 'pos-even?}}
+                   [2 4]
+                   [-2 -1 0 1 3]]]
 
     (doseq [[model valid-coll invalid-coll] (partition 3 test-data)]
       (doseq [data valid-coll]
