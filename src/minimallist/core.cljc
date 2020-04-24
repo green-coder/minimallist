@@ -28,14 +28,29 @@
 (declare valid?)
 (declare left-overs)
 
-(defn- element-left-overs [context model seq-data]
-  (if (and (#{:cat :alt :repeat} (:type model))
-           (:inlined model true))
+(defn- element-left-overs
+  "Returns the list of left overs from patterns which matched"
+  [context model seq-data]
+  (cond
+    (and (= (:type model) :alt))
+    (mapcat (fn [entry]
+              (element-left-overs context (:model entry) seq-data))
+            (:entries model))
+
+    (and (#{:cat :repeat} (:type model))
+         (:inlined model true))
     (left-overs context model seq-data)
-    (if (and seq-data
-             (valid? context model (first seq-data)))
-      (list (next seq-data))
-      '())))
+
+    (and seq-data
+         (valid? context model (first seq-data)))
+    (list (next seq-data))
+
+    :else '()))
+
+(defn- alt-left-overs [context model seq-data]
+  (mapcat (fn [entry]
+            (element-left-overs context (:model entry) seq-data))
+          (:entries model)))
 
 (defn- cat-left-overs [context model seq-data]
   (let [f (fn -left-overs [seq-entries seq-data]
@@ -45,11 +60,6 @@
                 (mapcat (partial -left-overs next-entries) left-overs-coll))
               (list seq-data)))]
     (f (seq (:entries model)) seq-data)))
-
-(defn- alt-left-overs [context model seq-data]
-  (mapcat (fn [entry]
-            (element-left-overs context (:model entry) seq-data))
-          (:entries model)))
 
 (defn- repeat-left-overs [context model seq-data]
   (let [{:keys [min max model]} model
@@ -114,8 +124,11 @@
                                                        (valid? context (:model entry) data-element))
                                                      (:entries model)
                                                      data)))))
-     (:alt :cat :repeat) (and (sequential? data)
-                              (some nil? (left-overs context model (seq data))))
+     :alt (some (fn [entry] ; same implementation as :or in this function
+                  (valid? context (:model entry) data))
+                (:entries model))
+     (:cat :repeat) (and (sequential? data)
+                         (some nil? (left-overs context model (seq data))))
      :let (valid? (merge context (:bindings model)) (:body model) data)
      :ref (valid? context (get context (:ref model)) data))))
 

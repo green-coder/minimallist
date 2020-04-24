@@ -24,21 +24,20 @@
                    ;; and
                    {:type :and
                     :entries [{:model {:type :fn
-                                       :fn vector?}}
+                                       :fn pos-int?}}
                               {:model {:type :fn
-                                       :fn #(= (count %) 3)}}]}
-                   [[:a :b :c]]
-                   [[:a :b] '(:a :b) #{:a}]
+                                       :fn even?}}]}
+                   [2 4 6]
+                   [0 :a -1 1 3]
 
                    ;; or
                    {:type :or
                     :entries [{:model {:type :fn
-                                       :fn vector?}}
+                                       :fn pos-int?}}
                               {:model {:type :fn
-                                       :fn #(= (count %) 3)}}]}
-                   [[:a :b]
-                    [:a :b :c] '(:a :b :c) #{:a :b :c} {:a 1, :b 2, :c 3}]
-                   ['(:a :b) #{:a :b}]
+                                       :fn even?}}]}
+                   [-2 0 1 2 3]
+                   [-3 -1]
 
                    ;; set
                    {:type :set
@@ -118,11 +117,51 @@
                               {:model {:type :cat
                                        :entries [{:model {:type :fn
                                                           :fn string?}}]}}]}
-                   [[1] ["1"]]
-                   [1 "1" :1 [:1]]
+                   [1 ["1"]]
+                   [[1] "1" :1 [:1]]
+
+                   ;; alt - inside a cat
+                   {:type :cat
+                    :entries [{:model {:type :fn
+                                       :fn int?}}
+                              {:model {:type :alt
+                                       :entries [{:model {:type :fn
+                                                          :fn string?}}
+                                                 {:model {:type :fn
+                                                          :fn keyword?}}
+                                                 {:model {:type :cat
+                                                          :entries [{:model {:type :fn
+                                                                             :fn string?}}
+                                                                    {:model {:type :fn
+                                                                             :fn keyword?}}]}}]}}
+                              {:model {:type :fn
+                                       :fn int?}}]}
+                   [[1 "2" 3] [1 :2 3] [1 "a" :b 3]]
+                   [[1 ["a" :b] 3]]
+
+                   ;; alt - inside a cat, but with :inline false on its cat entry
+                   {:type :cat
+                    :entries [{:model {:type :fn
+                                       :fn int?}}
+                              {:model {:type :alt
+                                       :entries [{:model {:type :fn
+                                                          :fn string?}}
+                                                 {:model {:type :fn
+                                                          :fn keyword?}}
+                                                 {:model {:type :cat
+                                                          :inlined false
+                                                          :entries [{:model {:type :fn
+                                                                             :fn string?}}
+                                                                    {:model {:type :fn
+                                                                             :fn keyword?}}]}}]}}
+                              {:model {:type :fn
+                                       :fn int?}}]}
+                   [[1 "2" 3] [1 :2 3] [1 ["a" :b] 3]]
+                   [[1 "a" :b 3]]
 
                    ;; cat of cat, the inner cat is implicitly inlined
                    {:type :cat
+                    ;; todo: support :coll-type with any of #{:vector :list}
                     :entries [{:model {:type :fn
                                        :fn int?}}
                               {:model {:type :cat
@@ -144,6 +183,7 @@
 
                    ;; repeat
                    {:type :repeat
+                    ;; todo: support :coll-type with any of #{:vector :list}
                     :min 0
                     :max 2
                     :model {:type :fn
