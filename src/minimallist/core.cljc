@@ -26,60 +26,46 @@
      true))
 
 (declare valid?)
-(declare left-overs)
-
-(defn- element-left-overs
-  "Returns the list of left overs from patterns which matched"
-  [context model seq-data]
-  (cond
-    (and (= (:type model) :alt))
-    (mapcat (fn [entry]
-              (element-left-overs context (:model entry) seq-data))
-            (:entries model))
-
-    (and (#{:cat :repeat} (:type model))
-         (:inlined model true))
-    (left-overs context model seq-data)
-
-    (and seq-data
-         (valid? context model (first seq-data)))
-    (list (next seq-data))
-
-    :else '()))
-
-(defn- alt-left-overs [context model seq-data]
-  (mapcat (fn [entry]
-            (element-left-overs context (:model entry) seq-data))
-          (:entries model)))
-
-(defn- cat-left-overs [context model seq-data]
-  (let [f (fn -left-overs [seq-entries seq-data]
-            (if seq-entries
-              (let [[{:keys [model]} & next-entries] seq-entries
-                    left-overs-coll (element-left-overs context model seq-data)]
-                (mapcat (partial -left-overs next-entries) left-overs-coll))
-              (list seq-data)))]
-    (f (seq (:entries model)) seq-data)))
-
-(defn- repeat-left-overs [context model seq-data]
-  (let [{:keys [min max model]} model
-        f (fn -left-overs [nb-matched seq-data]
-            (if (< nb-matched max)
-              (let [left-overs-coll (element-left-overs context model seq-data)
-                    rest (mapcat (partial -left-overs (inc nb-matched)) left-overs-coll)]
-                (if (<= min nb-matched)
-                  (cons seq-data rest)
-                  rest))
-              (list seq-data)))]
-    (f 0 seq-data)))
 
 (defn left-overs
   "Returns a sequence of possible left-overs from the seq-data after matching the model with it."
   [context model seq-data]
-  (case (:type model)
-    :cat (cat-left-overs context model seq-data)
-    :alt (alt-left-overs context model seq-data)
-    :repeat (repeat-left-overs context model seq-data)))
+  (cond
+    (= (:type model) :alt)
+    (mapcat (fn [entry]
+              (left-overs context (:model entry) seq-data))
+            (:entries model))
+
+    (and (= (:type model) :cat)
+         (:inlined model true))
+    (let [f (fn -left-overs [seq-entries seq-data]
+              (if seq-entries
+                (let [[{:keys [model]} & next-entries] seq-entries
+                      left-overs-coll (left-overs context model seq-data)]
+                  (mapcat (partial -left-overs next-entries) left-overs-coll))
+                (list seq-data)))]
+      (f (seq (:entries model)) seq-data))
+
+    (and (= (:type model) :repeat)
+         (:inlined model true))
+    (let [{:keys [min max model]} model
+          f (fn -left-overs [nb-matched seq-data]
+              (if (< nb-matched max)
+                (let [left-overs-coll (left-overs context model seq-data)
+                      rest (mapcat (partial -left-overs (inc nb-matched)) left-overs-coll)]
+                  (if (<= min nb-matched)
+                    (cons seq-data rest)
+                    rest))
+                (list seq-data)))]
+      (f 0 seq-data))
+
+    :else
+    (if (and seq-data
+             (let [model (cond-> model
+                                 (#{:cat :repeat} (:type model)) (assoc :inlined true))]
+               (valid? context model (first seq-data))))
+      (list (next seq-data))
+      '())))
 
 ;;---
 
@@ -95,9 +81,9 @@
      :and (every? (fn [entry]
                     (valid? context (:model entry) data))
                   (:entries model))
-     :or (some (fn [entry]
-                 (valid? context (:model entry) data))
-               (:entries model))
+     (:or :alt) (some (fn [entry]
+                        (valid? context (:model entry) data))
+                      (:entries model))
      :set (and (set? data)
                (every? (partial valid? context (:model model)) data))
      :map (and (map? data)
@@ -124,9 +110,6 @@
                                                        (valid? context (:model entry) data-element))
                                                      (:entries model)
                                                      data)))))
-     :alt (some (fn [entry] ; same implementation as :or in this function
-                  (valid? context (:model entry) data))
-                (:entries model))
      (:cat :repeat) (and (sequential? data)
                          (some nil? (left-overs context model (seq data))))
      :let (valid? (merge context (:bindings model)) (:body model) data)
