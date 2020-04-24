@@ -71,7 +71,7 @@
                    [{} {:a 1, :b 2}]
                    [{:a 1, :b "2"} [[:a 1] [:b 2]] {true 1, false 2}]
 
-                   ;; sequence, no type specified
+                   ;; sequence, no collection type specified
                    {:type :sequence
                     :model {:type :fn
                             :fn int?}}
@@ -161,14 +161,14 @@
 
                    ;; cat of cat, the inner cat is implicitly inlined
                    {:type :cat
-                    ;; todo: support :coll-type with any of #{:vector :list}
+                    :coll-type :vector
                     :entries [{:model {:type :fn
                                        :fn int?}}
                               {:model {:type :cat
                                        :entries [{:model {:type :fn
                                                           :fn int?}}]}}]}
                    [[1 2]]
-                   [[1] [1 [2]]]
+                   [[1] [1 [2]] [1 2 3] '(1) '(1 2) '(1 (2)) '(1 2 3)]
 
                    ;; cat of cat, the inner cat is explicitly not inlined
                    {:type :cat
@@ -178,19 +178,39 @@
                                        :inlined false
                                        :entries [{:model {:type :fn
                                                           :fn int?}}]}}]}
-                   [[1 [2]]]
-                   [[1] [1 2]]
+                   [[1 [2]] [1 '(2)]]
+                   [[1] [1 2] [1 [2] 3]]
 
-                   ;; repeat
+                   ;; repeat - no collection type specified
                    {:type :repeat
-                    ;; todo: support :coll-type with any of #{:vector :list}
+                    :min 0
+                    :max 2
+                    :model {:type :fn
+                            :fn int?}}
+                   [[] [1] [1 2] '() '(1) '(2 3)]
+                   [[1 2 3] '(1 2 3)]
+
+                   ;; repeat - inside a vector
+                   {:type :repeat
+                    :coll-type :vector
                     :min 0
                     :max 2
                     :model {:type :fn
                             :fn int?}}
                    [[] [1] [1 2]]
-                   [[1 2 3] [1 2 3 4]]
+                   [[1 2 3] '() '(1) '(2 3) '(1 2 3)]
 
+                   ;; repeat - inside a list
+                   {:type :repeat
+                    :coll-type :list
+                    :min 0
+                    :max 2
+                    :model {:type :fn
+                            :fn int?}}
+                   ['() '(1) '(2 3)]
+                   [[] [1] [1 2] [1 2 3] '(1 2 3)]
+
+                   ;; repeat - min > 0
                    {:type :repeat
                     :min 2
                     :max 3
@@ -199,6 +219,7 @@
                    [[1 2] [1 2 3]]
                    [[] [1] [1 2 3 4]]
 
+                   ;; repeat - max = +Infinity
                    {:type :repeat
                     :min 2
                     :max ##Inf
@@ -207,6 +228,7 @@
                    [[1 2] [1 2 3] [1 2 3 4]]
                    [[] [1]]
 
+                   ;; repeat - of a cat
                    {:type :repeat
                     :min 1
                     :max 2
@@ -217,6 +239,19 @@
                                                :fn string?}}]}}
                    [[1 "a"] [1 "a" 2 "b"]]
                    [[] [1] [1 2] [1 "a" 2 "b" 3 "c"]]
+
+                   ;; repeat - of a cat with :inlined false
+                   {:type :repeat
+                    :min 1
+                    :max 2
+                    :model {:type :cat
+                            :inlined false
+                            :entries [{:model {:type :fn
+                                               :fn int?}}
+                                      {:model {:type :fn
+                                               :fn string?}}]}}
+                   [[[1 "a"]] [[1 "a"] [2 "b"]] ['(1 "a") [2 "b"]]]
+                   [[] [1] [1 2] [1 "a"] [1 "a" 2 "b"] [1 "a" 2 "b" 3 "c"]]
 
                    ;; let
                    {:type :let

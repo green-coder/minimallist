@@ -111,6 +111,9 @@
                                                      (:entries model)
                                                      data)))))
      (:cat :repeat) (and (sequential? data)
+                         (({:any any?
+                            :list list?
+                            :vector vector?} (:coll-type model :any)) data)
                          (some nil? (left-overs context model (seq data))))
      :let (valid? (merge context (:bindings model)) (:body model) data)
      :ref (valid? context (get context (:ref model)) data))))
