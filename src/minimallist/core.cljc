@@ -156,8 +156,8 @@
                               (:valid? (describe context (:model entry) data)))
                             (:entries model))}
          :set (if (set? data)
-                (let [entries (map (partial describe context (:model model)) data)]
-                  {:valid?  (every? :valid? entries)
+                (let [entries (into #{} (map (partial describe context (:model model))) data)]
+                  {:valid? (every? :valid? entries)
                    :entries entries})
                 {:valid? false})
          :map (if (map? data)
@@ -171,7 +171,7 @@
                                                 {:missing? true})]))
                                       (:entries model)))]
                   (cond-> {:valid? (and (implies (contains? model :entries)
-                                                 (every? :valid? entries))
+                                                 (every? :valid? (vals entries)))
                                         (implies (contains? model :keys)
                                                  (every? (fn [key]
                                                            (:valid? (describe context (-> model :keys :model) key)))
@@ -185,27 +185,27 @@
                           (contains? model :entries) (assoc :entries entries)))
                 {:valid? false})
          :sequence (if (sequential? data)
-                     (let [entries (cond
-                                     (contains? model :model) (map (fn [data-element]
-                                                                     (describe context (:model model) data-element))
-                                                                   data)
-                                     (contains? model :entries) (map (fn [entry data-element]
-                                                                       (describe context (:model entry) data-element))
-                                                                     (:entries model)
-                                                                     data)
-                                     :else nil)]
+                     (let [entries (into [] (cond
+                                              (contains? model :model) (map (fn [data-element]
+                                                                              (describe context (:model model) data-element))
+                                                                            data)
+                                              (contains? model :entries) (map (fn [entry data-element]
+                                                                                (describe context (:model entry) data-element))
+                                                                              (:entries model)
+                                                                              data)
+                                              :else nil))]
                        (cond-> {:valid? (and (({:any any?
                                                 :list list?
                                                 :vector vector?} (:coll-type model :any)) data)
                                              (implies (contains? model :model)
-                                                      (every? :valid entries))
+                                                      (every? :valid? entries))
                                              (implies (contains? model :count)
                                                       (= (:count model) (count data)))
                                              (implies (contains? model :entries)
                                                       (and (= (count (:entries model)) (count data))
                                                            (every? :valid? entries))))}
                                (or (contains? model :model)
-                                   (contains? model :entries)) (assoc :entries (into #{} entries))))
+                                   (contains? model :entries)) (assoc :entries entries)))
                      {:valid? false})
          (:alt :cat :repeat) nil
          :let (describe (merge context (:bindings model)) (:body model) data)

@@ -252,7 +252,7 @@
                    [[[1 "a"]] [[1 "a"] [2 "b"]] ['(1 "a") [2 "b"]]]
                    [[] [1] [1 2] [1 "a"] [1 "a" 2 "b"] [1 "a" 2 "b" 3 "c"]]
 
-                   ;; let
+                   ;; let / ref
                    {:type :let
                     :bindings {'pos-even? {:type :and
                                            :entries [{:model {:type :fn
@@ -273,165 +273,182 @@
 
 
 
-(defn- trimmed-description [description]
+(defn- cleanup-description [description keys-to-remove]
   (clojure.walk/postwalk
-    (fn [x]
-      (if (and (map? x)
-               (every? (partial contains? x) [:context :model]))
-        (-> x
-            (dissoc :context)
-            (update :model select-keys [:type]))
-        x))
+    (fn [node]
+      (if (and (map? node)
+               (clojure.set/subset? #{:context :model :data} (set (keys node))))
+        (as-> node xxx
+              (cond-> xxx (contains? node :valid?) (update :valid? boolean))
+              (update xxx :model select-keys [:type])
+              (apply dissoc xxx keys-to-remove))
+
+        node))
     description))
 
-(comment
-  (-> (describe {:type :and
-                 :entries [{:model {:type :fn
-                                    :fn vector?}}
-                           {:model {:type :fn
-                                    :fn #(= (count %) 3)}}]}
-                [:a :b :c])
-      (trimmed-description))
-
-  (-> (describe {:type :fn
-                 :fn #(= 1 %)}
-                1)
-      (trimmed-description)))
-
 (deftest describe-test
-  (let [test-data []];; fn
-                   ;{:type :fn
-                   ; :fn #(= 1 %)}
-                   ;[[1 {:data 1
-                   ;     :valid? true}]]]]
-                   ;
-                   ;;; enum
-                   ;{:type :enum
-                   ; :values #{1 "2" :3}}
-                   ;[[[1 "2" :3] [1 "2" :3]]]
-                   ;
-                   ;;; and
-                   ;{:type :and
-                   ; :entries [{:model {:type :fn
-                   ;                    :fn vector?}}
-                   ;           {:model {:type :fn
-                   ;                    :fn #(= (count %) 3)}}]}
-                   ;[[[:a :b :c]
-                   ;  {:data [:a :b :c],
-                   ;   :model {:type :and}}]]
-                   ;
-                   ;;; or
-                   ;{:type :or
-                   ; :entries [{:model {:type :fn
-                   ;                    :fn int?}}
-                   ;           {:model {:type :fn
-                   ;                    :fn string?}}]}
-                   ;[[7 [7]]
-                   ; ["coco" ["coco"]]]]]
-                   ;
-                   ;;; map
-                   ;{:type :map
-                   ; :entries [{:key :a
-                   ;            :model {:type :fn
-                   ;                    :fn int?}}
-                   ;           {:key :b
-                   ;            :model {:type :or
-                   ;                    :entries [{:key :id
-                   ;                               :model {:type :fn
-                   ;                                       :fn int?}}
-                   ;                              {:key :name
-                   ;                               :model {:type :fn
-                   ;                                       :fn string?}}]}}]}
-                   ;[[{:a 1, :b 2} [{:a 1, :b [:id 2]}]]
-                   ; [{:a 1, :b "foo"} [{:a 1, :b [:name "foo"]}]]]
-                   ;
-                   ;;; map with multiple matches on its values
-                   ;{:type :map
-                   ; :entries [{:key :number
-                   ;            :model {:type :or
-                   ;                    :entries [{:key :id
-                   ;                               :model {:type :fn
-                   ;                                       :fn int?}}
-                   ;                              {:key :age
-                   ;                               :model {:type :fn
-                   ;                                       :fn int?}}]}}
-                   ;           {:key :text
-                   ;            :model {:type :or
-                   ;                    :entries [{:key :title
-                   ;                               :model {:type :fn
-                   ;                                       :fn string?}}
-                   ;                              {:key :description
-                   ;                               :model {:type :fn
-                   ;                                       :fn string?}}]}}]}
-                   ;[[{:number 20, :text "hi"} [{:number [:id
-                   ;                                      20]
-                   ;                             :text   [:title
-                   ;                                      "hi"]}
-                   ;                            {:number [:id
-                   ;                                      20]
-                   ;                             :text   [:description
-                   ;                                      "hi"]}
-                   ;                            {:number [:age
-                   ;                                      20]
-                   ;                             :text   [:title
-                   ;                                      "hi"]}
-                   ;                            {:number [:age
-                   ;                                      20]
-                   ;                             :text   [:description
-                   ;                                      "hi"]}]]
-                   ; [{:number "foo"} []]]]]
-                   ;
-                   ;;; map-of
-                   ;{:type :map-of
-                   ; :key {:model {:type :fn
-                   ;               :fn keyword?}}
-                   ; :value {:model {:type :fn
-                   ;                 :fn int?}}}
-                   ;[[{:a 1, :b 2} {:a 1, :b 2}]]
-                   ;
-                   ;;; sequence
-                   ;{:type :sequence
-                   ; :model {:type :fn
-                   ;         :fn int?}}
-                   ;[['(1 2 3) [1 2 3]]]
-                   ;
-                   ;;; list
-                   ;{:type :list
-                   ; :model {:type :fn
-                   ;         :fn int?}}
-                   ;[['(1 2 3) [1 2 3]]]
-                   ;
-                   ;;; vector
-                   ;{:type :vector
-                   ; :model {:type :fn
-                   ;         :fn int?}}
-                   ;[[[1 2 3] [1 2 3]]]
-                   ;
-                   ;;; set
-                   ;{:type :set
-                   ; :model {:type :fn
-                   ;         :fn int?}}
-                   ;[[#{1} [1]]]
-                   ;
-                   ;;; tuple
-                   ;{:type :tuple
-                   ; :entries [{:model {:type :fn
-                   ;                    :fn int?}}
-                   ;           {:model {:type :fn
-                   ;                    :fn string?}}]}
-                   ;[['(1 "2") [1 "2"]]]
-                   ;
-                   ;;; let
-                   ;{:type :let
-                   ; :bindings {'pos-even? {:type :and
-                   ;                        :entries [{:model {:type :fn
-                   ;                                           :fn pos-int?}}
-                   ;                                  {:model {:type :fn
-                   ;                                           :fn even?}}]}}
-                   ; :body {:type :ref
-                   ;        :ref 'pos-even?}}
-                   ;[[[2 4] [2 4]]]]]
-                   ;
+  (let [test-data [;; fn
+                   {:type :fn
+                    :fn #(= 1 %)}
+                   #{:context :model :data}
+                   [1 {:valid? true}
+                    2 {:valid? false}]
+
+                   ;; enum
+                   {:type :enum
+                    :values #{1 "2" false nil}}
+                   #{:context :model :data}
+                   [1 {:valid? true}
+                    "2" {:valid? true}
+                    false {:valid? true}
+                    nil {:valid? true}
+                    true {:valid? false}]
+
+                   ;; and
+                   {:type :and
+                    :entries [{:model {:type :fn
+                                       :fn pos-int?}}
+                              {:model {:type :fn
+                                       :fn even?}}]}
+                   #{:context :model :data}
+                   [0 {:valid? false}
+                    1 {:valid? false}
+                    2 {:valid? true}
+                    3 {:valid? false}
+                    4 {:valid? true}]
+
+                   ;; or
+                   {:type :or
+                    :entries [{:model {:type :fn
+                                       :fn int?}}
+                              {:model {:type :fn
+                                       :fn string?}}]}
+                   #{:context :model :data}
+                   [1 {:valid? true}
+                    "a" {:valid? true}
+                    :a {:valid? false}]
+
+                   ;; set
+                   {:type :set
+                    :model {:type :fn
+                            :fn int?}}
+                   #{:context :model :data}
+                   [#{1} {:entries #{{:valid? true}}
+                          :valid? true}]
+
+                   ;; map
+                   {:type :map
+                    :entries [{:key :a
+                               :model {:type :fn
+                                       :fn int?}}
+                              {:key :b
+                               :model {:type :or
+                                       :entries [{:model {:type :fn
+                                                          :fn int?}}
+                                                 {:model {:type :fn
+                                                          :fn string?}}]}}]}
+                   #{:context :model :data}
+                   [{:a 1, :b 2} {:entries {:a {:valid? true}
+                                            :b {:valid? true}}
+                                  :valid? true}
+                    {:a 1, :b "foo"} {:entries {:a {:valid? true}
+                                                :b {:valid? true}}
+                                      :valid? true}
+                    {:a 1, :b [1 2]} {:entries {:a {:valid? true}
+                                                :b {:valid? false}}
+                                      :valid? false}
+                    ; missing entry
+                    {:a 1} {:entries {:a {:valid? true}
+                                      :b {:missing? true}}
+                            :valid? false}
+                    ; extra entry
+                    {:a 1, :b 2, :c 3} {:entries {:a {:valid? true}
+                                                  :b {:valid? true}}
+                                        :valid? true}]
+
+                   ;; map - :keys
+                   {:type :map
+                    :keys {:model {:type :fn
+                                   :fn keyword?}}}
+                   #{:context :model :data}
+                   [{:a 1, :b 2} {:valid? true}
+                    {"a" 1} {:valid? false}]
+
+                   ;; map - :values
+                   {:type :map
+                    :values {:model {:type :fn
+                                     :fn int?}}}
+                   #{:context :model :data}
+                   [{:a 1, "b" 2} {:valid? true}
+                    {:a "1"} {:valid? false}]
+
+                   ;; sequence - :model
+                   {:type :sequence
+                    :model {:type :fn
+                            :fn int?}}
+                   #{:context :model :data}
+                   [[1 2 3] {:entries [{:valid? true}
+                                       {:valid? true}
+                                       {:valid? true}]
+                             :valid? true}
+                    '(1 2 3) {:entries [{:valid? true}
+                                        {:valid? true}
+                                        {:valid? true}]
+                              :valid? true}
+                    [1 "2" 3] {:entries [{:valid? true}
+                                         {:valid? false}
+                                         {:valid? true}]
+                               :valid? false}]
+
+                   ;; sequence - :coll-type vector
+                   {:type :sequence
+                    :coll-type :vector}
+                   #{:context :model :data}
+                   [[1 2 3] {:valid? true}
+                    '(1 2 3) {:valid? false}]
+
+                   ;; sequence - :entries
+                   {:type :sequence
+                    :entries [{:model {:type :fn
+                                       :fn int?}}
+                              {:model {:type :fn
+                                       :fn string?}}]}
+                   #{:context :model :data}
+                   [[1 "a"] {:entries [{:valid? true}
+                                       {:valid? true}]
+                             :valid? true}
+                    [1 2] {:entries [{:valid? true}
+                                     {:valid? false}]
+                            :valid? false}
+                    [1] {:entries [{:valid? true}]
+                          :valid? false}]
+
+                   ;; sequence - :count
+                   {:type :sequence
+                    :count 3}
+                   #{:context :model :data}
+                   [[1 2] {:valid? false}
+                    [1 2 3] {:valid? true}
+                    [1 2 3 4] {:valid? false}]
+
+                   ;; let / ref
+                   {:type :let
+                    :bindings {'pos-even? {:type :and
+                                           :entries [{:model {:type :fn
+                                                              :fn pos-int?}}
+                                                     {:model {:type :fn
+                                                              :fn even?}}]}}
+                    :body {:type :ref
+                           :ref 'pos-even?}}
+                   #{:context :model :data}
+                   [0 {:valid? false}
+                    1 {:valid? false}
+                    2 {:valid? true}
+                    3 {:valid? false}
+                    4 {:valid? true}]
+
+                   #__]]
+
                    ;;; cat of cat, the inner cat is implicitly inlined
                    ;{:type :cat
                    ; :entries [{:model {:type :fn
@@ -499,7 +516,7 @@
                    ;[[1 "a"] [1 "a" 2 "b"]]
                    ;[[] [1] [1 2] [1 "a" 2 "b" 3 "c"]]]]
 
-    (doseq [[model data-description-pairs] (partition 2 test-data)]
-      (doseq [[data description] data-description-pairs]
-        (is (= (trimmed-description (describe model data))
-               description))))))
+    (doseq [[model keys-to-remove data-description-pairs] (partition 3 test-data)]
+      (doseq [[data description] (partition 2 data-description-pairs)]
+        (is (= [data (cleanup-description (describe model data) keys-to-remove)]
+               [data description]))))))
