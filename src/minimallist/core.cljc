@@ -27,7 +27,7 @@
 
 (declare valid?)
 
-(defn left-overs
+(defn- left-overs
   "Returns a sequence of possible left-overs from the seq-data after matching the model with it."
   [context model seq-data]
   (cond
@@ -139,7 +139,7 @@
 ;; - using :alt instead of :or when testing on different kind of structures,
 ;;   in other word:
 ;;   - :or is only for non-structural models, (e.g. [:or odd? prime?])
-;;   - :alt only for structural models (e.g. [:alt [:my-set set?] [my-vec vector?]])
+;;   - :alt only for structural models (e.g. [:alt [:my-set set?] [:my-vec vector?]])
 
 (defn describe
   "Returns a descriptions of the data's structure using a hierarchy of hash-maps."
@@ -230,21 +230,4 @@
   (defn visit [model travel-plan data])
 
   ;; Not in the core, not urgent, maybe not needed.
-  (defn transform [model transformer data])
-
-
-  (for [a [:a :b :c]
-        b [:x :y :z]]
-    [a b])
-
-  (mapcat (fn [a]
-            (map (fn [b] [a b]) [:x :y :z]))
-          [:a :b :c])
-
-  (mapcat (fn [a]
-            (map (fn [b] [a b]) b-coll))
-          a-coll)
-
-  (mapcat (fn [a]
-            (map (fn [ac] [a ac]) acc))
-          a-coll))
+  (defn transform [model transformer data]))
