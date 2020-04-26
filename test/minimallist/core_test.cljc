@@ -1,5 +1,7 @@
 (ns minimallist.core-test
   (:require [clojure.test :refer [deftest testing is are]]
+            [clojure.walk :as walk]
+            [clojure.set :as set]
             [minimallist.core :refer [valid? explain describe undescribe]]))
 
 (deftest valid?-test
@@ -274,10 +276,10 @@
 
 
 (defn- cleanup-description [description keys-to-remove]
-  (clojure.walk/postwalk
+  (walk/postwalk
     (fn [node]
       (if (and (map? node)
-               (clojure.set/subset? #{:context :model :data} (set (keys node))))
+               (set/subset? #{:context :model :data} (set (keys node))))
         (as-> node xxx
               (cond-> xxx (contains? node :valid?) (update :valid? boolean))
               (update xxx :model select-keys [:type])
