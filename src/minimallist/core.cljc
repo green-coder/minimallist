@@ -85,6 +85,8 @@
                         (valid? context (:model entry) data))
                       (:entries model))
      :set (and (set? data)
+               (implies (contains? model :count-model)
+                        (valid? context (:count-model model) (count data)))
                (every? (partial valid? context (:elements-model model)) data))
      :map (and (map? data)
                (implies (contains? model :entries)
@@ -97,13 +99,13 @@
                (implies (contains? model :values)
                         (every? (partial valid? context (-> model :values :model)) (vals data))))
      :sequence (and (sequential? data)
-                    (({:any any?
-                       :list list?
-                       :vector vector?} (:coll-type model :any)) data)
+                    ((-> (:coll-type model :any) {:any any?
+                                                  :list list?
+                                                  :vector vector?}) data)
                     (implies (contains? model :elements-model)
                              (every? (partial valid? context (:elements-model model)) data))
-                    (implies (contains? model :count)
-                             (= (:count model) (count data)))
+                    (implies (contains? model :count-model)
+                             (valid? context (:count-model model) (count data)))
                     (implies (contains? model :entries)
                              (and (= (count (:entries model)) (count data))
                                   (every? true? (map (fn [entry data-element]
@@ -157,7 +159,9 @@
                             (:entries model))}
          :set (if (set? data)
                 (let [entries (into #{} (map (partial describe context (:elements-model model))) data)]
-                  {:valid? (every? :valid? entries)
+                  {:valid? (and (implies (contains? model :count-model)
+                                         (:valid? (describe context (:count-model model) (count data))))
+                                (every? :valid? entries))
                    :entries entries})
                 {:valid? false})
          :map (if (map? data)
@@ -199,8 +203,8 @@
                                                 :vector vector?} (:coll-type model :any)) data)
                                              (implies (contains? model :elements-model)
                                                       (every? :valid? entries))
-                                             (implies (contains? model :count)
-                                                      (= (:count model) (count data)))
+                                             (implies (contains? model :count-model)
+                                                      (:valid? (describe context (:count-model model) (count data))))
                                              (implies (contains? model :entries)
                                                       (and (= (count (:entries model)) (count data))
                                                            (every? :valid? entries))))}

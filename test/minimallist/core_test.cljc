@@ -42,10 +42,12 @@
 
                    ;; set
                    {:type :set
+                    :count-model {:type :enum
+                                  :values #{2 3}}
                     :elements-model {:type :fn
                                      :fn int?}}
-                   [#{1 2 3}]
-                   [#{1 :a} [1 2 3] '(1 2 3) `(1 2 ~3)]
+                   [#{1 2} #{1 2 3}]
+                   [#{1 :a} [1 2 3] '(1 2) `(1 ~2) #{1} #{1 2 3 4}]
 
                    ;; map, entries
                    {:type :map
@@ -98,9 +100,10 @@
 
                    ;; sequence with fixed size
                    {:type :sequence
-                    :count 2}
-                   ['(1 2) [1 "2"] `(1 ~"2")]
-                   [#{1 "a"} [1 "2" :3]]
+                    :count-model {:type :enum
+                                  :values #{2 3}}}
+                   ['(1 2) [1 "2"] `(1 ~"2") [1 "2" :3]]
+                   [#{1 "a"} [1 "2" :3 :4]]
 
                    ;; sequence with entries (fixed size is implied)
                    {:type :sequence
@@ -425,9 +428,10 @@
                     [1] {:entries [{:valid? true}]
                           :valid? false}]
 
-                   ;; sequence - :count
+                   ;; sequence - :count-model
                    {:type :sequence
-                    :count 3}
+                    :count-model {:type :enum
+                                  :values #{3}}}
                    #{:context :model :data}
                    [[1 2] {:valid? false}
                     [1 2 3] {:valid? true}
