@@ -437,6 +437,219 @@
                     [1 2 3] {:valid? true}
                     [1 2 3 4] {:valid? false}]
 
+                   ;; alt
+                   {:type :alt
+                    :entries [{:key :number
+                               :model {:type :fn
+                                       :fn int?}}
+                              {:key :sequence
+                               :model {:type :cat
+                                       :entries [{:key :text
+                                                  :model {:type :fn
+                                                          :fn string?}}]}}]}
+                   #{:context :model :data}
+                   [1 {:key :number
+                       :entry {:valid? true}
+                       :valid? true}
+                    ["1"] {:key :sequence
+                           :entry {:entries {:text {:valid? true}}
+                                   :valid? true}
+                           :valid? true}
+                    [1] {:valid? false}
+                    "1" {:valid? false}]
+
+                   ;;; alt - inside a cat
+                   ;{:type :cat
+                   ; :entries [{:model {:type :fn
+                   ;                    :fn int?}}
+                   ;           {:model {:type :alt
+                   ;                    :entries [{:model {:type :fn
+                   ;                                       :fn string?}}
+                   ;                              {:model {:type :fn
+                   ;                                       :fn keyword?}}
+                   ;                              {:model {:type :cat
+                   ;                                       :entries [{:model {:type :fn
+                   ;                                                          :fn string?}}
+                   ;                                                 {:model {:type :fn
+                   ;                                                          :fn keyword?}}]}}]}}
+                   ;           {:model {:type :fn
+                   ;                    :fn int?}}]}
+                   ;#{:context :model :data}
+                   ;[[1 "2" 3] {}
+                   ; [1 :2 3] {}
+                   ; [1 "a" :b 3] {}
+                   ; [1 ["a" :b] 3] {}]
+                   ;
+                   ;;; alt - inside a cat, but with :inline false on its cat entry
+                   ;{:type :cat
+                   ; :entries [{:model {:type :fn
+                   ;                    :fn int?}}
+                   ;           {:model {:type :alt
+                   ;                    :entries [{:model {:type :fn
+                   ;                                       :fn string?}}
+                   ;                              {:model {:type :fn
+                   ;                                       :fn keyword?}}
+                   ;                              {:model {:type :cat
+                   ;                                       :inlined false
+                   ;                                       :entries [{:model {:type :fn
+                   ;                                                          :fn string?}}
+                   ;                                                 {:model {:type :fn
+                   ;                                                          :fn keyword?}}]}}]}}
+                   ;           {:model {:type :fn
+                   ;                    :fn int?}}]}
+                   ;#{:context :model :data}
+                   ;[[1 "2" 3] {}
+                   ; [1 :2 3] {}
+                   ; [1 ["a" :b] 3] {}
+                   ; [1 "a" :b 3] {}]
+                   ;
+                   ;;; cat of cat, the inner cat is implicitly inlined
+                   ;{:type :cat
+                   ; :coll-type :vector
+                   ; :entries [{:model {:type :fn
+                   ;                    :fn int?}}
+                   ;           {:model {:type :cat
+                   ;                    :entries [{:model {:type :fn
+                   ;                                       :fn int?}}]}}]}
+                   ;#{:context :model :data}
+                   ;[[1 2] {}
+                   ; [1] {}
+                   ; [1 [2]] {}
+                   ; [1 2 3] {}
+                   ; '(1) {}
+                   ; '(1 2) {}
+                   ; '(1 (2)) {}
+                   ; '(1 2 3) {}]
+                   ;
+                   ;;; cat of cat, the inner cat is explicitly not inlined
+                   ;{:type :cat
+                   ; :entries [{:model {:type :fn
+                   ;                    :fn int?}}
+                   ;           {:model {:type :cat
+                   ;                    :inlined false
+                   ;                    :entries [{:model {:type :fn
+                   ;                                       :fn int?}}]}}]}
+                   ;#{:context :model :data}
+                   ;[[1 [2]] {}
+                   ; [1 '(2)] {}
+                   ; [1] {}
+                   ; [1 2] {}
+                   ; [1 [2] 3] {}]
+                   ;
+                   ;;; repeat - no collection type specified
+                   ;{:type :repeat
+                   ; :min 0
+                   ; :max 2
+                   ; :elements-model {:type :fn
+                   ;                  :fn int?}}
+                   ;#{:context :model :data}
+                   ;[[] {}
+                   ; [1] {}
+                   ; [1 2] {}
+                   ; '() {}
+                   ; '(1) {}
+                   ; '(2 3) {}
+                   ; [1 2 3] {}
+                   ; '(1 2 3) {}]
+                   ;
+                   ;;; repeat - inside a vector
+                   ;{:type :repeat
+                   ; :coll-type :vector
+                   ; :min 0
+                   ; :max 2
+                   ; :elements-model {:type :fn
+                   ;                  :fn int?}}
+                   ;#{:context :model :data}
+                   ;[[] {}
+                   ; [1] {}
+                   ; [1 2] {}
+                   ; [1 2 3] {}
+                   ; '() {}
+                   ; '(1) {}
+                   ; '(2 3) {}
+                   ; '(1 2 3) {}]
+                   ;
+                   ;;; repeat - inside a list
+                   ;{:type :repeat
+                   ; :coll-type :list
+                   ; :min 0
+                   ; :max 2
+                   ; :elements-model {:type :fn
+                   ;                  :fn int?}}
+                   ;#{:context :model :data}
+                   ;['() {}
+                   ; '(1) {}
+                   ; '(2 3) {}
+                   ; [] {}
+                   ; [1] {}
+                   ; [1 2] {}
+                   ; [1 2 3] {}
+                   ; '(1 2 3) {}]
+                   ;
+                   ;;; repeat - min > 0
+                   ;{:type :repeat
+                   ; :min 2
+                   ; :max 3
+                   ; :elements-model {:type :fn
+                   ;                  :fn int?}}
+                   ;#{:context :model :data}
+                   ;[[1 2] {}
+                   ; [1 2 3] {}
+                   ; [] {}
+                   ; [1] {}
+                   ; [1 2 3 4] {}]
+                   ;
+                   ;;; repeat - max = +Infinity
+                   ;{:type :repeat
+                   ; :min 2
+                   ; :max ##Inf
+                   ; :elements-model {:type :fn
+                   ;                  :fn int?}}
+                   ;#{:context :model :data}
+                   ;[[1 2] {}
+                   ; [1 2 3] {}
+                   ; [1 2 3 4] {}
+                   ; [] {}
+                   ; [1] {}]
+                   ;
+                   ;;; repeat - of a cat
+                   ;{:type :repeat
+                   ; :min 1
+                   ; :max 2
+                   ; :elements-model {:type :cat
+                   ;                  :entries [{:model {:type :fn
+                   ;                                     :fn int?}}
+                   ;                            {:model {:type :fn
+                   ;                                     :fn string?}}]}}
+                   ;#{:context :model :data}
+                   ;[[1 "a"] {}
+                   ; [1 "a" 2 "b"] {}
+                   ; [] {}
+                   ; [1] {}
+                   ; [1 2] {}
+                   ; [1 "a" 2 "b" 3 "c"] {}]
+                   ;
+                   ;;; repeat - of a cat with :inlined false
+                   ;{:type :repeat
+                   ; :min 1
+                   ; :max 2
+                   ; :elements-model {:type :cat
+                   ;                  :inlined false
+                   ;                  :entries [{:model {:type :fn
+                   ;                                     :fn int?}}
+                   ;                            {:model {:type :fn
+                   ;                                     :fn string?}}]}}
+                   ;#{:context :model :data}
+                   ;[[[1 "a"]] {}
+                   ; [[1 "a"] [2 "b"]] {}
+                   ; ['(1 "a") [2 "b"]] {}
+                   ; [] {}
+                   ; [1] {}
+                   ; [1 2] {}
+                   ; [1 "a"] {}
+                   ; [1 "a" 2 "b"] {}
+                   ; [1 "a" 2 "b" 3 "c"] {}]
+
                    ;; let / ref
                    {:type :let
                     :bindings {'pos-even? {:type :and
@@ -455,72 +668,6 @@
 
                    #__]]
 
-                   ;;; cat of cat, the inner cat is implicitly inlined
-                   ;{:type :cat
-                   ; :entries [{:model {:type :fn
-                   ;                    :fn int?}}
-                   ;           {:model {:type :cat
-                   ;                    :entries [{:model {:type :fn
-                   ;                                       :fn int?}}]}}]}
-                   ;[[1 2]]
-                   ;[[1] [1 [2]]]
-                   ;
-                   ;;; cat of cat, the inner cat is explicitly not inlined
-                   ;{:type :cat
-                   ; :entries [{:model {:type :fn
-                   ;                    :fn int?}}
-                   ;           {:model {:type :cat
-                   ;                    :inlined false
-                   ;                    :entries [{:model {:type :fn
-                   ;                                       :fn int?}}]}}]}
-                   ;[[1 [2]]]
-                   ;[[1] [1 2]]
-                   ;
-                   ;;; alt
-                   ;{:type :alt
-                   ; :entries [{:model {:type :fn
-                   ;                    :fn int?}}
-                   ;           {:model {:type :cat
-                   ;                    :entries [{:model {:type :fn
-                   ;                                       :fn string?}}]}}]}
-                   ;[[1] ["1"]]
-                   ;[1 "1" :1 [:1]]
-                   ;
-                   ;;; repeat
-                   ;{:type :repeat
-                   ; :min 0
-                   ; :max 2
-                   ; :model {:type :fn
-                   ;         :fn int?}}
-                   ;[[] [1] [1 2]]
-                   ;[[1 2 3] [1 2 3 4]]
-                   ;
-                   ;{:type :repeat
-                   ; :min 2
-                   ; :max 3
-                   ; :model {:type :fn
-                   ;         :fn int?}}
-                   ;[[1 2] [1 2 3]]
-                   ;[[] [1] [1 2 3 4]]
-                   ;
-                   ;{:type :repeat
-                   ; :min 2
-                   ; :max ##Inf
-                   ; :model {:type :fn
-                   ;         :fn int?}}
-                   ;[[1 2] [1 2 3] [1 2 3 4]]
-                   ;[[] [1]]
-                   ;
-                   ;{:type :repeat
-                   ; :min 1
-                   ; :max 2
-                   ; :model {:type :cat
-                   ;         :entries [{:model {:type :fn
-                   ;                            :fn int?}}
-                   ;                   {:model {:type :fn
-                   ;                            :fn string?}}]}}
-                   ;[[1 "a"] [1 "a" 2 "b"]]
-                   ;[[] [1] [1 2] [1 "a" 2 "b" 3 "c"]]]]
 
     (doseq [[model keys-to-remove data-description-pairs] (partition 3 test-data)]
       (doseq [[data description] (partition 2 data-description-pairs)]

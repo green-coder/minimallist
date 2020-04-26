@@ -113,9 +113,9 @@
                                                      (:entries model)
                                                      data)))))
      (:cat :repeat) (and (sequential? data)
-                         (({:any any?
-                            :list list?
-                            :vector vector?} (:coll-type model :any)) data)
+                         ((-> (:coll-type model :any) {:any any?
+                                                       :list list?
+                                                       :vector vector?}) data)
                          (some nil? (left-overs context model (seq data))))
      :let (valid? (merge context (:bindings model)) (:body model) data)
      :ref (valid? context (get context (:ref model)) data))))
@@ -211,7 +211,19 @@
                                (or (contains? model :elements-model)
                                    (contains? model :entries)) (assoc :entries entries)))
                      {:valid? false})
-         (:alt :cat :repeat) nil
+         :alt (let [[key entry] (first (into []
+                                             (comp (map (fn [entry]
+                                                          [(:key entry)
+                                                           (describe context (:model entry) data)]))
+                                                   (filter (comp :valid? second))
+                                                   (take 1))
+                                             (:entries model)))]
+                (if (nil? entry)
+                  {:valid? false}
+                  {:key key
+                   :entry entry
+                   :valid? true}))
+         (:cat :repeat) nil
          :let (describe (merge context (:bindings model)) (:body model) data)
          :ref (describe context (get context (:ref model)) data))
        (assoc :context context ;; maybe: (post-fn description context model data)
