@@ -42,8 +42,8 @@
 
                    ;; set
                    {:type :set
-                    :model {:type :fn
-                            :fn int?}}
+                    :elements-model {:type :fn
+                                     :fn int?}}
                    [#{1 2 3}]
                    [#{1 :a} [1 2 3] '(1 2 3) `(1 2 ~3)]
 
@@ -74,16 +74,16 @@
 
                    ;; sequence, no collection type specified
                    {:type :sequence
-                    :model {:type :fn
-                            :fn int?}}
+                    :elements-model {:type :fn
+                                     :fn int?}}
                    ['(1 2 3) [1 2 3] `(1 2 ~3)]
                    ['(1 :a) #{1 2 3} {:a 1, :b 2, :c 3}]
 
                    ;; sequence as a list
                    {:type :sequence
                     :coll-type :list
-                    :model {:type :fn
-                            :fn int?}}
+                    :elements-model {:type :fn
+                                     :fn int?}}
                    ['(1 2 3)]
                    ['(1 :a) [1 2 3] #{1 2 3}
                     #_`(1 2 ~3)] ; this is not a list in cljs]
@@ -91,8 +91,8 @@
                    ;; sequence as a vector
                    {:type :sequence
                     :coll-type :vector
-                    :model {:type :fn
-                            :fn int?}}
+                    :elements-model {:type :fn
+                                     :fn int?}}
                    [[1 2 3]]
                    [[1 :a] '(1 2 3) #{1 2 3} `(1 2 ~3)]
 
@@ -186,8 +186,8 @@
                    {:type :repeat
                     :min 0
                     :max 2
-                    :model {:type :fn
-                            :fn int?}}
+                    :elements-model {:type :fn
+                                     :fn int?}}
                    [[] [1] [1 2] '() '(1) '(2 3)]
                    [[1 2 3] '(1 2 3)]
 
@@ -196,8 +196,8 @@
                     :coll-type :vector
                     :min 0
                     :max 2
-                    :model {:type :fn
-                            :fn int?}}
+                    :elements-model {:type :fn
+                                     :fn int?}}
                    [[] [1] [1 2]]
                    [[1 2 3] '() '(1) '(2 3) '(1 2 3)]
 
@@ -206,8 +206,8 @@
                     :coll-type :list
                     :min 0
                     :max 2
-                    :model {:type :fn
-                            :fn int?}}
+                    :elements-model {:type :fn
+                                     :fn int?}}
                    ['() '(1) '(2 3)]
                    [[] [1] [1 2] [1 2 3] '(1 2 3)]
 
@@ -215,8 +215,8 @@
                    {:type :repeat
                     :min 2
                     :max 3
-                    :model {:type :fn
-                            :fn int?}}
+                    :elements-model {:type :fn
+                                     :fn int?}}
                    [[1 2] [1 2 3]]
                    [[] [1] [1 2 3 4]]
 
@@ -224,8 +224,8 @@
                    {:type :repeat
                     :min 2
                     :max ##Inf
-                    :model {:type :fn
-                            :fn int?}}
+                    :elements-model {:type :fn
+                                     :fn int?}}
                    [[1 2] [1 2 3] [1 2 3 4]]
                    [[] [1]]
 
@@ -233,11 +233,11 @@
                    {:type :repeat
                     :min 1
                     :max 2
-                    :model {:type :cat
-                            :entries [{:model {:type :fn
-                                               :fn int?}}
-                                      {:model {:type :fn
-                                               :fn string?}}]}}
+                    :elements-model {:type :cat
+                                     :entries [{:model {:type :fn
+                                                        :fn int?}}
+                                               {:model {:type :fn
+                                                        :fn string?}}]}}
                    [[1 "a"] [1 "a" 2 "b"]]
                    [[] [1] [1 2] [1 "a" 2 "b" 3 "c"]]
 
@@ -245,12 +245,12 @@
                    {:type :repeat
                     :min 1
                     :max 2
-                    :model {:type :cat
-                            :inlined false
-                            :entries [{:model {:type :fn
-                                               :fn int?}}
-                                      {:model {:type :fn
-                                               :fn string?}}]}}
+                    :elements-model {:type :cat
+                                     :inlined false
+                                     :entries [{:model {:type :fn
+                                                        :fn int?}}
+                                               {:model {:type :fn
+                                                        :fn string?}}]}}
                    [[[1 "a"]] [[1 "a"] [2 "b"]] ['(1 "a") [2 "b"]]]
                    [[] [1] [1 2] [1 "a"] [1 "a" 2 "b"] [1 "a" 2 "b" 3 "c"]]
 
@@ -332,8 +332,8 @@
 
                    ;; set
                    {:type :set
-                    :model {:type :fn
-                            :fn int?}}
+                    :elements-model {:type :fn
+                                     :fn int?}}
                    #{:context :model :data}
                    [#{1} {:entries #{{:valid? true}}
                           :valid? true}]
@@ -384,10 +384,10 @@
                    [{:a 1, "b" 2} {:valid? true}
                     {:a "1"} {:valid? false}]
 
-                   ;; sequence - :model
+                   ;; sequence - :elements-model
                    {:type :sequence
-                    :model {:type :fn
-                            :fn int?}}
+                    :elements-model {:type :fn
+                                     :fn int?}}
                    #{:context :model :data}
                    [[1 2 3] {:entries [{:valid? true}
                                        {:valid? true}

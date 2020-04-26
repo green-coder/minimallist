@@ -48,10 +48,10 @@
 
     (and (= (:type model) :repeat)
          (:inlined model true))
-    (let [{:keys [min max model]} model
+    (let [{:keys [min max elements-model]} model
           f (fn -left-overs [nb-matched seq-data]
               (if (< nb-matched max)
-                (let [left-overs-coll (left-overs context model seq-data)
+                (let [left-overs-coll (left-overs context elements-model seq-data)
                       rest (mapcat (partial -left-overs (inc nb-matched)) left-overs-coll)]
                   (if (<= min nb-matched)
                     (cons seq-data rest)
@@ -85,7 +85,7 @@
                         (valid? context (:model entry) data))
                       (:entries model))
      :set (and (set? data)
-               (every? (partial valid? context (:model model)) data))
+               (every? (partial valid? context (:elements-model model)) data))
      :map (and (map? data)
                (implies (contains? model :entries)
                         (every? (fn [entry]
@@ -100,8 +100,8 @@
                     (({:any any?
                        :list list?
                        :vector vector?} (:coll-type model :any)) data)
-                    (implies (contains? model :model)
-                             (every? (partial valid? context (:model model)) data))
+                    (implies (contains? model :elements-model)
+                             (every? (partial valid? context (:elements-model model)) data))
                     (implies (contains? model :count)
                              (= (:count model) (count data)))
                     (implies (contains? model :entries)
@@ -156,7 +156,7 @@
                               (:valid? (describe context (:model entry) data)))
                             (:entries model))}
          :set (if (set? data)
-                (let [entries (into #{} (map (partial describe context (:model model))) data)]
+                (let [entries (into #{} (map (partial describe context (:elements-model model))) data)]
                   {:valid? (every? :valid? entries)
                    :entries entries})
                 {:valid? false})
@@ -186,9 +186,9 @@
                 {:valid? false})
          :sequence (if (sequential? data)
                      (let [entries (into [] (cond
-                                              (contains? model :model) (map (fn [data-element]
-                                                                              (describe context (:model model) data-element))
-                                                                            data)
+                                              (contains? model :elements-model) (map (fn [data-element]
+                                                                                       (describe context (:elements-model model) data-element))
+                                                                                     data)
                                               (contains? model :entries) (map (fn [entry data-element]
                                                                                 (describe context (:model entry) data-element))
                                                                               (:entries model)
@@ -197,14 +197,14 @@
                        (cond-> {:valid? (and (({:any any?
                                                 :list list?
                                                 :vector vector?} (:coll-type model :any)) data)
-                                             (implies (contains? model :model)
+                                             (implies (contains? model :elements-model)
                                                       (every? :valid? entries))
                                              (implies (contains? model :count)
                                                       (= (:count model) (count data)))
                                              (implies (contains? model :entries)
                                                       (and (= (count (:entries model)) (count data))
                                                            (every? :valid? entries))))}
-                               (or (contains? model :model)
+                               (or (contains? model :elements-model)
                                    (contains? model :entries)) (assoc :entries entries)))
                      {:valid? false})
          (:alt :cat :repeat) nil
