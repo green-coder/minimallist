@@ -26,6 +26,7 @@
      true))
 
 (declare valid?)
+(declare describe)
 
 (defn- left-overs
   "Returns a sequence of possible left-overs from the seq-data after matching the model with it."
@@ -61,11 +62,137 @@
 
     :else
     (if (and seq-data
-             (let [model (cond-> model
-                                 (#{:cat :repeat} (:type model)) (assoc :inlined true))]
-               (valid? context model (first seq-data))))
+             (valid? context (dissoc model :inlined) (first seq-data)))
       (list (next seq-data))
       '())))
+
+(defn- sequence-descriptions
+  "Returns a sequence of possible descriptions from the seq-data matching a model."
+  [context model seq-data]
+  (cond
+    (= (:type model) :alt)
+    (mapcat (fn [entry]
+              (sequence-descriptions context (:model entry) seq-data))
+            (:entries model))
+
+    (and (= (:type model) :cat)
+         (:inlined model true))
+    (let [f (fn -sequence-descriptions [seq-entries seq-data]
+              (if seq-entries
+                (let [[{:keys [model]} & next-entries] seq-entries
+                      descriptions (sequence-descriptions context model seq-data)]
+                  (mapcat (partial -sequence-descriptions next-entries) descriptions))
+                (list seq-data)))]
+      (f (seq (:entries model)) seq-data))
+
+    (and (= (:type model) :repeat)
+         (:inlined model true))
+    (let [{:keys [min max elements-model]} model
+          f (fn -sequence-descriptions [nb-matched seq-data]
+              ; {:min 1, :max 2}
+              ; from: [a b] [x y]
+              ; to:   ([a] [b] [a x] [a y] [b x] [b y])
+              ;(prn nb-matched seq-data)
+              (if (< nb-matched max)
+                (let [seq-descriptions (sequence-descriptions context elements-model seq-data)
+                      rest (mapcat (fn [seq-description]
+                                     (let [rest-seq-descriptions (-sequence-descriptions (inc nb-matched) (:rest-seq seq-description))]
+                                       (map (fn [rest-seq-description]
+                                              {:length (+ (:length seq-description)
+                                                          (:length rest-seq-description))
+                                               :rest-seq (:rest-seq rest-seq-description)
+                                               :entries (into (:entries seq-description)
+                                                              (:entries rest-seq-description))})
+                                            rest-seq-descriptions)))
+                                   seq-descriptions)]
+                  (if (<= min (inc nb-matched))
+                    (concat seq-descriptions rest)
+                    rest)) ; We don't include matches which are too short in the solution.
+                '()))]
+      (f 0 seq-data))
+
+    :else
+    (if-let [description (and seq-data
+                              (describe context (dissoc model :inlined) (first seq-data)))]
+      (list {:length 1
+             :rest-seq (next seq-data)
+             :entries [(dissoc description :context :model)]}) ; debug - remove the dissoc
+      '())))
+
+(comment
+  (sequence-descriptions {}
+                         {:type :fn
+                          :fn int?}
+                         (seq [1]))
+  => [{:length 1,
+       :rest-seq nil,
+       :entries [{:valid? true, :data 1}]}]
+
+  (sequence-descriptions {}
+                         ; [:+ int?]
+                         {:type :repeat
+                          :min 1
+                          :max ##Inf
+                          :elements-model {:type :fn
+                                           :fn int?}}
+                         [1 2 3])
+  => ; result of the whole function
+  [; result of a :repeat of 1 element
+   {:length 1
+    :rest-seq '(2 3)
+    :entries [{:valid? true, :data 1}]}
+   ; result of a :repeat of 2 elements
+   {:length 2
+    :rest-seq '(3)
+    :entries [{:valid? true, :data 1}
+              {:valid? true, :data 2}]}
+   ; result of a :repeat of 3 elements
+   {:length 3
+    :rest-seq 'nil
+    :entries [{:valid? true, :data 1}
+              {:valid? true, :data 2}
+              {:valid? true, :data 3}]}]
+
+
+  (sequence-descriptions {}
+                         ; [:cat :foo1 [:+ pos-int?]
+                         ;       :foo2 [:+ int?]]
+                         {:type :cat
+                          :entries [{:key :foo1
+                                     :model {:type :repeat
+                                             :min 1
+                                             :max ##Inf
+                                             :elements-model {:type :fn
+                                                              :fn pos-int?}}}
+                                    {:key :foo2
+                                     :model {:type :repeat
+                                             :min 1
+                                             :max ##Inf
+                                             :elements-model {:type :fn
+                                                              :fn int?}}}]}
+                         [3 4 0 2])
+
+  ;; the numbers are descriptions of themselves
+  [{:length 2
+    :rest-seq '(0 2)
+    :entries {:foo1 {; :length 1
+                     ; :rest-seq '(4 0 2)
+                     :entries [3]}
+              :foo2 {; :length 1
+                     ; :rest-seq '(0 2)
+                     :entries [4]}}}
+   {:length 3
+    :rest-seq '(2)
+    :entries {:foo1 {:entries [3]}
+              :foo2 {:entries [4 0]}}}
+   {:length 4
+    :rest-seq nil
+    :entries {:foo1 {:entries [3]}
+              :foo2 {:entries [4 0 2]}}}
+   {::length 4
+    :entries {:foo1 {:entries [3 4]}
+              :foo2 {:entries [0 2]}}}])
+
 
 ;;---
 
@@ -223,7 +350,18 @@
                   {:key key
                    :entry entry
                    :valid? true}))
-         (:cat :repeat) nil
+         (:cat :repeat) (if (and (sequential? data)
+                                 ((-> (:coll-type model :any) {:any any?
+                                                               :list list?
+                                                               :vector vector?}) data)
+                                 (implies (contains? model :count-model)
+                                          (:valid? (describe context (:count-model model) (count data)))))
+                          (let [descriptions (sequence-descriptions context model (seq data))]
+                            (if (seq descriptions)
+                              {:entry (-> descriptions first :description) ; returns the first description
+                               :valid? true}
+                              {:valid? false}))
+                          {:valid? false})
          :let (describe (merge context (:bindings model)) (:body model) data)
          :ref (describe context (get context (:ref model)) data))
        (assoc :context context ;; maybe: (post-fn description context model data)
