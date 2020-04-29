@@ -88,28 +88,19 @@
     (and (= (:type model) :repeat)
          (:inlined model true))
     (let [{:keys [min max elements-model]} model
-          f (fn -sequence-descriptions [nb-matched seq-data]
-              ; {:min 1, :max 2}
-              ; from: [a b] [x y]
-              ; to:   ([a] [b] [a x] [a y] [b x] [b y])
-              ;(prn nb-matched seq-data)
+          f (fn -sequence-descriptions [nb-matched acc]
               (if (< nb-matched max)
-                (let [seq-descriptions (sequence-descriptions context elements-model seq-data)
-                      rest (mapcat (fn [seq-description]
-                                     (let [rest-seq-descriptions (-sequence-descriptions (inc nb-matched) (:rest-seq seq-description))]
-                                       (map (fn [rest-seq-description]
-                                              {:length (+ (:length seq-description)
-                                                          (:length rest-seq-description))
-                                               :rest-seq (:rest-seq rest-seq-description)
-                                               :entries (into (:entries seq-description)
-                                                              (:entries rest-seq-description))})
-                                            rest-seq-descriptions)))
-                                   seq-descriptions)]
-                  (if (<= min (inc nb-matched))
-                    (concat seq-descriptions rest)
-                    rest)) ; We don't include matches which are too short in the solution.
+                (let [seq-descriptions (map (fn [seq-description]
+                                              {:length (+ (:length acc) (:length seq-description))
+                                               :rest-seq (:rest-seq seq-description)
+                                               :entries (into (:entries acc) (:entries seq-description))})
+                                            (sequence-descriptions context elements-model (:rest-seq acc)))]
+                  (cond->> (mapcat (partial -sequence-descriptions (inc nb-matched)) seq-descriptions)
+                           (<= min (inc nb-matched)) (concat seq-descriptions)))
                 '()))]
-      (f 0 seq-data))
+      (f 0 {:length 0
+            :rest-seq seq-data
+            :entries []}))
 
     :else
     (if-let [description (and seq-data
