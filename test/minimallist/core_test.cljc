@@ -437,27 +437,27 @@
                     [1 2 3] {:valid? true}
                     [1 2 3 4] {:valid? false}]
 
-                   ;; alt
-                   {:type :alt
-                    :entries [{:key :number
-                               :model {:type :fn
-                                       :fn int?}}
-                              {:key :sequence
-                               :model {:type :cat
-                                       :entries [{:key :text
-                                                  :model {:type :fn
-                                                          :fn string?}}]}}]}
-                   #{:context :model :data}
-                   [1 {:key :number
-                       :entry {:valid? true}
-                       :valid? true}
-                    ["1"] {:key :sequence
-                           :entry {:entries {:text {:valid? true}}
-                                   :valid? true}
-                           :valid? true}
-                    [1] {:valid? false}
-                    "1" {:valid? false}]
-
+                   ;;; alt
+                   ;{:type :alt
+                   ; :entries [{:key :number
+                   ;            :model {:type :fn
+                   ;                    :fn int?}}
+                   ;           {:key :sequence
+                   ;            :model {:type :cat
+                   ;                    :entries [{:key :text
+                   ;                               :model {:type :fn
+                   ;                                       :fn string?}}]}}]}
+                   ;#{:context :model :data}
+                   ;[1 {:key :number
+                   ;    :entry {:valid? true}
+                   ;    :valid? true}
+                   ; ;["1"] {:key :sequence
+                   ; ;       :entry {:entries {:text {:valid? true}}
+                   ; ;               :valid? true}
+                   ; ;       :valid? true}
+                   ; [1] {:valid? false}
+                   ; "1" {:valid? false}]
+                   ;
                    ;;; alt - inside a cat
                    ;{:type :cat
                    ; :entries [{:model {:type :fn
@@ -535,23 +535,31 @@
                    ; [1] {}
                    ; [1 2] {}
                    ; [1 [2] 3] {}]
-                   ;
-                   ;;; repeat - no collection type specified
-                   ;{:type :repeat
-                   ; :min 0
-                   ; :max 2
-                   ; :elements-model {:type :fn
-                   ;                  :fn int?}}
-                   ;#{:context :model :data}
-                   ;[[] {}
-                   ; [1] {}
-                   ; [1 2] {}
-                   ; '() {}
-                   ; '(1) {}
-                   ; '(2 3) {}
-                   ; [1 2 3] {}
-                   ; '(1 2 3) {}]
-                   ;
+
+                   ;; repeat - no collection type specified
+                   {:type :repeat
+                    :min 0
+                    :max 2
+                    :elements-model {:type :fn
+                                     :fn int?}}
+                   #{:context :model :data}
+                   [[] {:entries []
+                        :valid? true}
+                    [1] {:entries [{:valid? true}]
+                         :valid? true}
+                    [1 2] {:entries [{:valid? true}
+                                     {:valid? true}]
+                           :valid? true}
+                    '() {:entries []
+                         :valid? true}
+                    '(1) {:entries [{:valid? true}]
+                          :valid? true}
+                    '(2 3) {:entries [{:valid? true}
+                                      {:valid? true}]
+                            :valid? true}
+                    [1 2 3] {:valid? false}
+                    '(1 2 3) {:valid? false}]
+
                    ;;; repeat - inside a vector
                    ;{:type :repeat
                    ; :coll-type :vector

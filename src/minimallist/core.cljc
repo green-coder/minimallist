@@ -98,16 +98,20 @@
                   (cond->> (mapcat (partial -sequence-descriptions (inc nb-matched)) seq-descriptions)
                            (<= min (inc nb-matched)) (concat seq-descriptions)))
                 '()))]
-      (f 0 {:length 0
-            :rest-seq seq-data
-            :entries []}))
+      ; TODO: filter on :valid?
+      (cond->> (f 0 {:length 0
+                     :rest-seq seq-data
+                     :entries []})
+               (<= min 0) (concat [{:length 0
+                                    :rest-seq seq-data
+                                    :entries []}])))
 
     :else
     (if-let [description (and seq-data
                               (describe context (dissoc model :inlined) (first seq-data)))]
       (list {:length 1
              :rest-seq (next seq-data)
-             :entries [(dissoc description :context :model)]}) ; debug - remove the dissoc
+             :entries [description]})
       '())))
 
 (comment
@@ -120,13 +124,22 @@
        :entries [{:valid? true, :data 1}]}]
 
   (sequence-descriptions {}
+                         ; [:* int?]
+                         {:type :repeat
+                          :min 0
+                          :max ##Inf
+                          :elements-model {:type :fn
+                                           :fn int?}}
+                         (seq [1 :2])) ; TODO: filter on :valid?
+
+  (sequence-descriptions {}
                          ; [:+ int?]
                          {:type :repeat
                           :min 1
                           :max ##Inf
                           :elements-model {:type :fn
                                            :fn int?}}
-                         [1 2 3])
+                         (seq [1 2 3]))
   => ; result of the whole function
   [; result of a :repeat of 1 element
    {:length 1
@@ -347,9 +360,10 @@
                                                                :vector vector?}) data)
                                  (implies (contains? model :count-model)
                                           (:valid? (describe context (:count-model model) (count data)))))
-                          (let [descriptions (sequence-descriptions context model (seq data))]
+                          (let [descriptions (filter (comp nil? :rest-seq)
+                                                     (sequence-descriptions context model (seq data)))]
                             (if (seq descriptions)
-                              {:entry (-> descriptions first :description) ; returns the first description
+                              {:entries (:entries (first descriptions))
                                :valid? true}
                               {:valid? false}))
                           {:valid? false})
