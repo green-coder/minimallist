@@ -72,7 +72,12 @@
   (cond
     (= (:type model) :alt)
     (mapcat (fn [entry]
-              (sequence-descriptions context (:model entry) seq-data))
+              (map (fn [description]
+                     {:key (:key entry)
+                      :length (:length description)
+                      :rest-seq (:rest-seq description)
+                      :alternative description})
+                   (sequence-descriptions context (:model entry) seq-data)))
             (:entries model))
 
     (and (= (:type model) :cat)
@@ -93,7 +98,7 @@
                         (map (fn [seq-description]
                                {:length (+ (:length acc) (:length seq-description))
                                 :rest-seq (:rest-seq seq-description)
-                                :entries (into (:entries acc) (:entries seq-description))}) ; bug: possibly a kind of conj instead
+                                :entries (conj (:entries acc) seq-description)})
                              (sequence-descriptions context elements-model (:rest-seq acc))))
                       seq-descriptions))]
       (->> (iterate f [{:length 0
@@ -122,6 +127,22 @@
                           :max 2
                           :elements-model {:type :fn
                                            :fn int?}}
+                        (seq [1 2]))
+
+  (sequence-descriptions {}
+                         {:type :alt
+                          :entries [{:key :ints
+                                     :model {:type :repeat
+                                             :min 0
+                                             :max 2
+                                             :elements-model {:type :fn
+                                                              :fn int?}}}
+                                    {:key :keywords
+                                     :model {:type :repeat
+                                             :min 0
+                                             :max 2
+                                             :elements-model {:type :fn
+                                                              :fn keyword?}}}]}
                         (seq [1 2]))
 
   (sequence-descriptions {}
