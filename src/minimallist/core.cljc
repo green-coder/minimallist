@@ -88,40 +88,41 @@
     (and (= (:type model) :repeat)
          (:inlined model true))
     (let [{:keys [min max elements-model]} model
-          f (fn -sequence-descriptions [nb-matched acc]
-              (if (< nb-matched max)
-                (let [seq-descriptions (map (fn [seq-description]
-                                              {:length (+ (:length acc) (:length seq-description))
-                                               :rest-seq (:rest-seq seq-description)
-                                               :entries (into (:entries acc) (:entries seq-description))})
-                                            (sequence-descriptions context elements-model (:rest-seq acc)))]
-                  (cond->> (mapcat (partial -sequence-descriptions (inc nb-matched)) seq-descriptions)
-                           (<= min (inc nb-matched)) (concat seq-descriptions)))
-                '()))]
-      ; TODO: filter on :valid?
-      (cond->> (f 0 {:length 0
-                     :rest-seq seq-data
-                     :entries []})
-               (<= min 0) (concat [{:length 0
-                                    :rest-seq seq-data
-                                    :entries []}])))
+          f (fn [seq-descriptions]
+              (mapcat (fn [acc]
+                        (map (fn [seq-description]
+                               {:length (+ (:length acc) (:length seq-description))
+                                :rest-seq (:rest-seq seq-description)
+                                :entries (into (:entries acc) (:entries seq-description))}) ; bug: possibly a kind of conj instead
+                             (sequence-descriptions context elements-model (:rest-seq acc))))
+                      seq-descriptions))]
+      (->> (iterate f [{:length 0
+                        :rest-seq seq-data
+                        :entries []}])
+           (take-while seq)
+           (take (inc max)) ; inc because it includes the "match zero times"
+           (drop min)
+           (reverse) ; longest repetitions first
+           (apply concat)))
 
     :else
-    (if-let [description (and seq-data
-                              (describe context (dissoc model :inlined) (first seq-data)))]
-      (list {:length 1
-             :rest-seq (next seq-data)
-             :entries [description]})
+    (if seq-data
+      (let [description (describe context (dissoc model :inlined) (first seq-data))]
+        (if (:valid? description)
+          (list {:length 1
+                 :rest-seq (next seq-data)
+                 :entries [description]})
+          '()))
       '())))
 
 (comment
   (sequence-descriptions {}
-                         {:type :fn
-                          :fn int?}
-                         (seq [1]))
-  => [{:length 1,
-       :rest-seq nil,
-       :entries [{:valid? true, :data 1}]}]
+                         {:type :repeat
+                          :min 0
+                          :max 2
+                          :elements-model {:type :fn
+                                           :fn int?}}
+                        (seq [1 2]))
 
   (sequence-descriptions {}
                          ; [:* int?]
@@ -130,7 +131,7 @@
                           :max ##Inf
                           :elements-model {:type :fn
                                            :fn int?}}
-                         (seq [1 :2])) ; TODO: filter on :valid?
+                         (seq [1 :2]))
 
   (sequence-descriptions {}
                          ; [:+ int?]
@@ -140,62 +141,24 @@
                           :elements-model {:type :fn
                                            :fn int?}}
                          (seq [1 2 3]))
-  => ; result of the whole function
-  [; result of a :repeat of 1 element
-   {:length 1
-    :rest-seq '(2 3)
-    :entries [{:valid? true, :data 1}]}
-   ; result of a :repeat of 2 elements
-   {:length 2
-    :rest-seq '(3)
-    :entries [{:valid? true, :data 1}
-              {:valid? true, :data 2}]}
-   ; result of a :repeat of 3 elements
-   {:length 3
-    :rest-seq 'nil
-    :entries [{:valid? true, :data 1}
-              {:valid? true, :data 2}
-              {:valid? true, :data 3}]}]
 
-
-  (sequence-descriptions {}
-                         ; [:cat :foo1 [:+ pos-int?]
-                         ;       :foo2 [:+ int?]]
-                         {:type :cat
-                          :entries [{:key :foo1
-                                     :model {:type :repeat
-                                             :min 1
-                                             :max ##Inf
-                                             :elements-model {:type :fn
-                                                              :fn pos-int?}}}
-                                    {:key :foo2
-                                     :model {:type :repeat
-                                             :min 1
-                                             :max ##Inf
-                                             :elements-model {:type :fn
-                                                              :fn int?}}}]}
-                         [3 4 0 2])
-
-  ;; the numbers are descriptions of themselves
-  [{:length 2
-    :rest-seq '(0 2)
-    :entries {:foo1 {; :length 1
-                     ; :rest-seq '(4 0 2)
-                     :entries [3]}
-              :foo2 {; :length 1
-                     ; :rest-seq '(0 2)
-                     :entries [4]}}}
-   {:length 3
-    :rest-seq '(2)
-    :entries {:foo1 {:entries [3]}
-              :foo2 {:entries [4 0]}}}
-   {:length 4
-    :rest-seq nil
-    :entries {:foo1 {:entries [3]}
-              :foo2 {:entries [4 0 2]}}}
-   {::length 4
-    :entries {:foo1 {:entries [3 4]}
-              :foo2 {:entries [0 2]}}}])
+  #_(sequence-descriptions {}
+                           ; [:cat :foo1 [:+ pos-int?]
+                           ;       :foo2 [:+ int?]]
+                           {:type :cat
+                            :entries [{:key :foo1
+                                       :model {:type :repeat
+                                               :min 1
+                                               :max ##Inf
+                                               :elements-model {:type :fn
+                                                                :fn pos-int?}}}
+                                      {:key :foo2
+                                       :model {:type :repeat
+                                               :min 1
+                                               :max ##Inf
+                                               :elements-model {:type :fn
+                                                                :fn int?}}}]}
+                           [3 4 0 2]))
 
 
 ;;---
