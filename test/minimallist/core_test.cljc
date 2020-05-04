@@ -6,65 +6,65 @@
 
 (comment
   (#'m/sequence-descriptions {}
-                             ; [:cat [:+ pos-int?]
-                             ;       [:+ int?]]
-                             {:type :cat
-                              :entries [{:model {:type :repeat
-                                                 :min 1
-                                                 :max ##Inf
-                                                 :elements-model {:type :fn
-                                                                  :fn pos-int?}}}
-                                        {:model {:type :repeat
-                                                 :min 1
-                                                 :max ##Inf
-                                                 :elements-model {:type :fn
-                                                                  :fn int?}}}]}
-                             [3 4 0 2])
+    ; [:cat [:+ pos-int?]
+    ;       [:+ int?]]
+    {:type    :cat
+     :entries [{:model {:type           :repeat
+                        :min            1
+                        :max            ##Inf
+                        :elements-model {:type :fn
+                                         :fn   pos-int?}}}
+               {:model {:type           :repeat
+                        :min            1
+                        :max            ##Inf
+                        :elements-model {:type :fn
+                                         :fn   int?}}}]}
+    [3 4 0 2])
 
   (#'m/sequence-descriptions {}
-                             ; [:repeat {:min 0, :max 2} int?]
-                             {:type :repeat
-                              :min 0
-                              :max 2
-                              :elements-model {:type :fn
-                                               :fn int?}}
-                             (seq [1 2]))
+    ; [:repeat {:min 0, :max 2} int?]
+    {:type           :repeat
+     :min            0
+     :max            2
+     :elements-model {:type :fn
+                      :fn   int?}}
+    (seq [1 2]))
 
   (#'m/sequence-descriptions {}
-                             ; [:alt [:ints     [:repeat {:min 0, :max 2} int?]]
-                             ;       [:keywords [:repeat {:min 0, :max 2} keyword?]]
-                             {:type :alt
-                              :entries [{:key :ints
-                                         :model {:type :repeat
-                                                 :min 0
-                                                 :max 2
-                                                 :elements-model {:type :fn
-                                                                  :fn int?}}}
-                                        {:key :keywords
-                                         :model {:type :repeat
-                                                 :min 0
-                                                 :max 2
-                                                 :elements-model {:type :fn
-                                                                  :fn keyword?}}}]}
-                             (seq [1 2]))
+    ; [:alt [:ints     [:repeat {:min 0, :max 2} int?]]
+    ;       [:keywords [:repeat {:min 0, :max 2} keyword?]]
+    {:type    :alt
+     :entries [{:key   :ints
+                :model {:type           :repeat
+                        :min            0
+                        :max            2
+                        :elements-model {:type :fn
+                                         :fn   int?}}}
+               {:key   :keywords
+                :model {:type           :repeat
+                        :min            0
+                        :max            2
+                        :elements-model {:type :fn
+                                         :fn   keyword?}}}]}
+    (seq [1 2]))
 
   (#'m/sequence-descriptions {}
-                             ; [:* int?]
-                             {:type :repeat
-                              :min 0
-                              :max ##Inf
-                              :elements-model {:type :fn
-                                               :fn int?}}
-                             (seq [1 :2]))
+    ; [:* int?]
+    {:type           :repeat
+     :min            0
+     :max            ##Inf
+     :elements-model {:type :fn
+                      :fn   int?}}
+    (seq [1 :2]))
 
   (#'m/sequence-descriptions {}
-                             ; [:+ int?]
-                             {:type :repeat
-                              :min 1
-                              :max ##Inf
-                              :elements-model {:type :fn
-                                               :fn int?}}
-                             (seq [1 2 3])))
+    ; [:+ int?]
+    {:type           :repeat
+     :min            1
+     :max            ##Inf
+     :elements-model {:type :fn
+                      :fn   int?}}
+    (seq [1 2 3])))
 
 (deftest valid?-test
   (let [test-data [;; fn
@@ -178,9 +178,11 @@
 
                    ;; alt
                    {:type    :alt
-                    :entries [{:model {:type :fn
+                    :entries [{:key   :int
+                               :model {:type :fn
                                        :fn   int?}}
-                              {:model {:type    :cat
+                              {:key   :strings
+                               :model {:type    :cat
                                        :entries [{:model {:type :fn
                                                           :fn   string?}}]}}]}
                    [1 ["1"]]
@@ -191,11 +193,14 @@
                     :entries [{:model {:type :fn
                                        :fn   int?}}
                               {:model {:type    :alt
-                                       :entries [{:model {:type :fn
+                                       :entries [{:key   :string
+                                                  :model {:type :fn
                                                           :fn   string?}}
-                                                 {:model {:type :fn
+                                                 {:key   :keyword
+                                                  :model {:type :fn
                                                           :fn   keyword?}}
-                                                 {:model {:type    :cat
+                                                 {:key   :string-keyword
+                                                  :model {:type    :cat
                                                           :entries [{:model {:type :fn
                                                                              :fn   string?}}
                                                                     {:model {:type :fn
@@ -210,11 +215,14 @@
                     :entries [{:model {:type :fn
                                        :fn   int?}}
                               {:model {:type    :alt
-                                       :entries [{:model {:type :fn
+                                       :entries [{:key   :string
+                                                  :model {:type :fn
                                                           :fn   string?}}
-                                                 {:model {:type :fn
+                                                 {:key   :keyword
+                                                  :model {:type :fn
                                                           :fn   keyword?}}
-                                                 {:model {:type    :cat
+                                                 {:key   :string-keyword
+                                                  :model {:type    :cat
                                                           :inlined false
                                                           :entries [{:model {:type :fn
                                                                              :fn   string?}}
@@ -515,9 +523,7 @@
                     ["1"] {:valid? true
                            :key    :sequence
                            :entry  {:valid?  true
-                                    :entries [{:length   1
-                                               :rest-seq nil
-                                               :entry    {:valid? true}}]}}
+                                    :entries [{:valid? true}]}}
                     [1] {:valid? false}
                     "1" {:valid? false}]
 
@@ -542,49 +548,21 @@
                                        :fn   int?}}]}
                    #{:context :model :data}
                    [[1 "2" 3] {:valid?  true
-                               :entries [{:length   1
-                                          :rest-seq '("2" 3)
-                                          :entry    {:valid? true}}
-                                         {:key      :option1
-                                          :length   1
-                                          :rest-seq '(3)
-                                          :entry    {:length   1
-                                                     :rest-seq '(3)
-                                                     :entry    {:valid? true}}}
-                                         {:length   1
-                                          :rest-seq nil
-                                          :entry    {:valid? true}}]}
+                               :entries [{:valid? true}
+                                         {:key   :option1
+                                          :entry {:valid? true}}
+                                         {:valid? true}]}
                     [1 :2 3] {:valid?  true
-                              :entries [{:length   1
-                                         :rest-seq '(:2 3)
-                                         :entry    {:valid? true}}
-                                        {:key      :option2
-                                         :length   1
-                                         :rest-seq '(3)
-                                         :entry    {:length   1
-                                                    :rest-seq '(3)
-                                                    :entry    {:valid? true}}}
-                                        {:length   1
-                                         :rest-seq nil
-                                         :entry    {:valid? true}}]}
+                              :entries [{:valid? true}
+                                        {:key   :option2
+                                         :entry {:valid? true}}
+                                        {:valid? true}]}
                     [1 "a" :b 3] {:valid?  true
-                                  :entries [{:length   1
-                                             :rest-seq '("a" :b 3)
-                                             :entry    {:valid? true}}
-                                            {:key      :option3
-                                             :length   2
-                                             :rest-seq '(3)
-                                             :entry    {:length   2
-                                                        :rest-seq '(3)
-                                                        :entries  [{:length   1
-                                                                    :rest-seq '(:b 3)
-                                                                    :entry    {:valid? true}}
-                                                                   {:length   1
-                                                                    :rest-seq '(3)
-                                                                    :entry    {:valid? true}}]}}
-                                            {:length   1
-                                             :rest-seq nil
-                                             :entry    {:valid? true}}]}
+                                  :entries [{:valid? true}
+                                            {:key   :option3
+                                             :entry {:entries [{:valid? true}
+                                                               {:valid? true}]}}
+                                            {:valid? true}]}
                     [1 ["a" :b] 3] {:valid? false}]
 
                    ;; alt - inside a cat, but with :inline false on its cat entry
@@ -609,51 +587,23 @@
                                        :fn   int?}}]}
                    #{:context :model :data}
                    [[1 "2" 3] {:valid?  true
-                               :entries [{:length   1
-                                          :rest-seq '("2" 3)
-                                          :entry    {:valid? true}}
-                                         {:key      :option1
-                                          :length   1
-                                          :rest-seq '(3)
-                                          :entry    {:length   1
-                                                     :rest-seq '(3)
-                                                     :entry    {:valid? true}}}
-                                         {:length   1
-                                          :rest-seq nil
-                                          :entry    {:valid? true}}]}
+                               :entries [{:valid? true}
+                                         {:key   :option1
+                                          :entry {:valid? true}}
+                                         {:valid? true}]}
                     [1 :2 3] {:valid?  true
-                              :entries [{:length   1
-                                         :rest-seq '(:2 3)
-                                         :entry    {:valid? true}}
-                                        {:key      :option2
-                                         :length   1
-                                         :rest-seq '(3)
-                                         :entry    {:length   1
-                                                    :rest-seq '(3)
-                                                    :entry    {:valid? true}}}
-                                        {:length   1
-                                         :rest-seq nil
-                                         :entry    {:valid? true}}]}
+                              :entries [{:valid? true}
+                                        {:key   :option2
+                                         :entry {:valid? true}}
+                                        {:valid? true}]}
                     [1 "a" :b 3] {:valid? false}
                     [1 ["a" :b] 3] {:valid?  true
-                                    :entries [{:length   1
-                                               :rest-seq '(["a" :b] 3)
-                                               :entry    {:valid? true}}
-                                              {:key      :option3
-                                               :length   1
-                                               :rest-seq '(3)
-                                               :entry    {:length   1
-                                                          :rest-seq '(3)
-                                                          :entry    {:valid?  true
-                                                                     :entries [{:length   1
-                                                                                :rest-seq '(:b)
-                                                                                :entry    {:valid? true}}
-                                                                               {:length   1
-                                                                                :rest-seq nil
-                                                                                :entry    {:valid? true}}]}}}
-                                              {:length   1
-                                               :rest-seq nil
-                                               :entry    {:valid? true}}]}]
+                                    :entries [{:valid? true}
+                                              {:key   :option3
+                                               :entry {:valid?  true
+                                                       :entries [{:valid? true}
+                                                                 {:valid? true}]}}
+                                              {:valid? true}]}]
 
                    ;; cat of cat, the inner cat is implicitly inlined
                    {:type    :cat
@@ -664,14 +614,8 @@
                                                           :fn   int?}}]}}]}
                    #{:context :model :data}
                    [[1 2] {:valid?  true
-                           :entries [{:length   1
-                                      :rest-seq '(2)
-                                      :entry    {:valid? true}}
-                                     {:length   1
-                                      :rest-seq nil
-                                      :entries  [{:length   1
-                                                  :rest-seq nil
-                                                  :entry    {:valid? true}}]}]}
+                           :entries [{:valid? true}
+                                     {:entries [{:valid? true}]}]}
                     [1] {:valid? false}
                     [1 [2]] {:valid? false}
                     [1 2 3] {:valid? false}]
@@ -686,25 +630,13 @@
                                                           :fn   int?}}]}}]}
                    #{:context :model :data}
                    [[1 [2]] {:valid?  true
-                             :entries [{:length   1
-                                        :rest-seq '([2])
-                                        :entry    {:valid? true}}
-                                       {:length   1
-                                        :rest-seq nil
-                                        :entry    {:valid?  true
-                                                   :entries [{:length   1
-                                                              :rest-seq nil
-                                                              :entry    {:valid? true}}]}}]}
+                             :entries [{:valid? true}
+                                       {:valid?  true
+                                        :entries [{:valid? true}]}]}
                     [1 '(2)] {:valid?  true
-                              :entries [{:length   1
-                                         :rest-seq '([2])
-                                         :entry    {:valid? true}}
-                                        {:length   1
-                                         :rest-seq nil
-                                         :entry    {:valid?  true
-                                                    :entries [{:length   1
-                                                               :rest-seq nil
-                                                               :entry    {:valid? true}}]}}]}
+                              :entries [{:valid? true}
+                                        {:valid?  true
+                                         :entries [{:valid? true}]}]}
                     [1] {:valid? false}
                     [1 2] {:valid? false}
                     [1 [2] 3] {:valid? false}]
@@ -718,29 +650,17 @@
                    #{:context :model :data}
                    [[] {:entries []
                         :valid?  true}
-                    [1] {:entries [{:length   1
-                                    :rest-seq nil
-                                    :entry    {:valid? true}}]
+                    [1] {:entries [{:valid? true}]
                          :valid?  true}
-                    [1 2] {:entries [{:length   1
-                                      :rest-seq '(2)
-                                      :entry    {:valid? true}}
-                                     {:length   1
-                                      :rest-seq nil
-                                      :entry    {:valid? true}}]
+                    [1 2] {:entries [{:valid? true}
+                                     {:valid? true}]
                            :valid?  true}
                     '() {:entries []
                          :valid?  true}
-                    '(1) {:entries [{:length   1
-                                     :rest-seq nil
-                                     :entry    {:valid? true}}]
+                    '(1) {:entries [{:valid? true}]
                           :valid?  true}
-                    '(2 3) {:entries [{:length   1
-                                       :rest-seq '(3)
-                                       :entry    {:valid? true}}
-                                      {:length   1
-                                       :rest-seq nil
-                                       :entry    {:valid? true}}]
+                    '(2 3) {:entries [{:valid? true}
+                                      {:valid? true}]
                             :valid?  true}
                     [1 2 3] {:valid? false}
                     '(1 2 3) {:valid? false}]
@@ -754,9 +674,7 @@
                                      :fn   int?}}
                    #{:context :model :data}
                    [[1] {:valid?  true
-                         :entries [{:length   1
-                                    :rest-seq nil
-                                    :entry    {:valid? true}}]}
+                         :entries [{:valid? true}]}
                     '(1) {:valid? false}]
 
                    ;; repeat - inside a list
@@ -769,9 +687,7 @@
                    #{:context :model :data}
                    [[1] {:valid? false}
                     '(1) {:valid?  true
-                          :entries [{:length   1
-                                     :rest-seq nil
-                                     :entry    {:valid? true}}]}]
+                          :entries [{:valid? true}]}]
 
                    ;; repeat - min > 0
                    {:type           :repeat
@@ -783,22 +699,12 @@
                    [[] {:valid? false}
                     [1] {:valid? false}
                     [1 2] {:valid?  true
-                           :entries [{:length   1
-                                      :rest-seq '(2)
-                                      :entry    {:valid? true}}
-                                     {:length   1
-                                      :rest-seq nil
-                                      :entry    {:valid? true}}]}
+                           :entries [{:valid? true}
+                                     {:valid? true}]}
                     [1 2 3] {:valid?  true
-                             :entries [{:length   1
-                                        :rest-seq '(2 3)
-                                        :entry    {:valid? true}}
-                                       {:length   1
-                                        :rest-seq '(3)
-                                        :entry    {:valid? true}}
-                                       {:length   1
-                                        :rest-seq nil
-                                        :entry    {:valid? true}}]}
+                             :entries [{:valid? true}
+                                       {:valid? true}
+                                       {:valid? true}]}
                     [1 2 3 4] {:valid? false}]
 
                    ;; repeat - max = +Infinity
@@ -812,28 +718,18 @@
                     [1] {:valid? false, :data [1]}
                     [1 2] {:valid?  true
                            :data    [1 2]
-                           :entries [{:length   1
-                                      :rest-seq '(2)
-                                      :entry    {:valid? true
-                                                 :data   1}}
-                                     {:length   1
-                                      :rest-seq nil
-                                      :entry    {:valid? true
-                                                 :data   2}}]}
+                           :entries [{:valid? true
+                                      :data   1}
+                                     {:valid? true
+                                      :data   2}]}
                     [1 2 3] {:valid?  true
                              :data    [1 2 3]
-                             :entries [{:length   1
-                                        :rest-seq '(2 3)
-                                        :entry    {:valid? true
-                                                   :data   1}}
-                                       {:length   1
-                                        :rest-seq '(3)
-                                        :entry    {:valid? true
-                                                   :data   2}}
-                                       {:length   1
-                                        :rest-seq nil
-                                        :entry    {:valid? true
-                                                   :data   3}}]}]
+                             :entries [{:valid? true
+                                        :data   1}
+                                       {:valid? true
+                                        :data   2}
+                                       {:valid? true
+                                        :data   3}]}]
 
                    ;; repeat - of a cat
                    {:type           :repeat
@@ -847,38 +743,20 @@
                    #{:context :model}
                    [[1 "a"] {:valid?  true
                              :data    [1 "a"]
-                             :entries [{:length   2
-                                        :rest-seq nil
-                                        :entries  [{:length   1
-                                                    :rest-seq '("a")
-                                                    :entry    {:valid? true
-                                                               :data   1}}
-                                                   {:length   1
-                                                    :rest-seq nil
-                                                    :entry    {:valid? true
-                                                               :data   "a"}}]}]}
+                             :entries [{:entries [{:valid? true
+                                                   :data   1}
+                                                  {:valid? true
+                                                   :data   "a"}]}]}
                     [1 "a" 2 "b"] {:valid?  true
                                    :data    [1 "a" 2 "b"]
-                                   :entries [{:length   2
-                                              :rest-seq '(2 "b")
-                                              :entries  [{:length   1
-                                                          :rest-seq '("a" 2 "b")
-                                                          :entry    {:valid? true
-                                                                     :data   1}}
-                                                         {:length   1
-                                                          :rest-seq '(2 "b")
-                                                          :entry    {:valid? true
-                                                                     :data   "a"}}]}
-                                             {:length   2
-                                              :rest-seq nil
-                                              :entries  [{:length   1
-                                                          :rest-seq '("b")
-                                                          :entry    {:valid? true
-                                                                     :data   2}}
-                                                         {:length   1
-                                                          :rest-seq nil
-                                                          :entry    {:valid? true
-                                                                     :data   "b"}}]}]}
+                                   :entries [{:entries [{:valid? true
+                                                         :data   1}
+                                                        {:valid? true
+                                                         :data   "a"}]}
+                                             {:entries [{:valid? true
+                                                         :data   2}
+                                                        {:valid? true
+                                                         :data   "b"}]}]}
                     [] {:data   []
                         :valid? false}
                     [1] {:data   [1]
@@ -900,53 +778,23 @@
                                                         :fn   string?}}]}}
                    #{:context :model :data}
                    [[[1 "a"]] {:valid?  true
-                               :entries [{:length   1
-                                          :rest-seq nil
-                                          :entry    {:valid?  true
-                                                     :entries [{:length   1
-                                                                :rest-seq '("a")
-                                                                :entry    {:valid? true}}
-                                                               {:length   1
-                                                                :rest-seq nil
-                                                                :entry    {:valid? true}}]}}]}
+                               :entries [{:valid?  true
+                                          :entries [{:valid? true}
+                                                    {:valid? true}]}]}
                     [[1 "a"] [2 "b"]] {:valid?  true
-                                       :entries [{:length   1
-                                                  :rest-seq '([2 "b"])
-                                                  :entry    {:valid?  true
-                                                             :entries [{:length   1
-                                                                        :rest-seq '("a")
-                                                                        :entry    {:valid? true}}
-                                                                       {:length   1
-                                                                        :rest-seq nil
-                                                                        :entry    {:valid? true}}]}}
-                                                 {:length   1
-                                                  :rest-seq nil
-                                                  :entry    {:valid?  true
-                                                             :entries [{:length   1
-                                                                        :rest-seq '("b")
-                                                                        :entry    {:valid? true}}
-                                                                       {:length   1
-                                                                        :rest-seq nil
-                                                                        :entry    {:valid? true}}]}}]}
+                                       :entries [{:valid?  true
+                                                  :entries [{:valid? true}
+                                                            {:valid? true}]}
+                                                 {:valid?  true
+                                                  :entries [{:valid? true}
+                                                            {:valid? true}]}]}
                     ['(1 "a") [2 "b"]] {:valid?  true
-                                        :entries [{:length   1
-                                                   :rest-seq '([2 "b"])
-                                                   :entry    {:valid?  true
-                                                              :entries [{:length   1
-                                                                         :rest-seq '("a")
-                                                                         :entry    {:valid? true}}
-                                                                        {:length   1
-                                                                         :rest-seq nil
-                                                                         :entry    {:valid? true}}]}}
-                                                  {:length   1
-                                                   :rest-seq nil
-                                                   :entry    {:valid?  true
-                                                              :entries [{:length   1
-                                                                         :rest-seq '("b")
-                                                                         :entry    {:valid? true}}
-                                                                        {:length   1
-                                                                         :rest-seq nil
-                                                                         :entry    {:valid? true}}]}}]}
+                                        :entries [{:valid?  true
+                                                   :entries [{:valid? true}
+                                                             {:valid? true}]}
+                                                  {:valid?  true
+                                                   :entries [{:valid? true}
+                                                             {:valid? true}]}]}
                     [] {:valid? false}
                     [1] {:valid? false}
                     [1 2] {:valid? false}
