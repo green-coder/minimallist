@@ -66,17 +66,24 @@
       (list (next seq-data))
       '())))
 
+;; This may be removed once we have the zipper visitor working.
+(defn- seq-description-without-impl-details [seq-description]
+  ; Gets rid of the implementation-induced wrapper node around the description
+  (if-let [description (:description seq-description)]
+    description
+    (dissoc seq-description :length :rest-seq)))
+
 (defn- sequence-descriptions
   "Returns a sequence of possible descriptions from the seq-data matching a model."
   [context model seq-data]
   (cond
     (= (:type model) :alt)
     (mapcat (fn [entry]
-              (map (fn [description]
+              (map (fn [seq-description]
                      {:key (:key entry)
-                      :length (:length description)
-                      :rest-seq (:rest-seq description)
-                      :entry description})
+                      :length (:length seq-description)
+                      :rest-seq (:rest-seq seq-description)
+                      :entry (seq-description-without-impl-details seq-description)})
                    (sequence-descriptions context (:model entry) seq-data)))
             (:entries model))
 
@@ -87,7 +94,7 @@
                         (map (fn [seq-description]
                                {:length (+ (:length acc) (:length seq-description))
                                 :rest-seq (:rest-seq seq-description)
-                                :entries (conj (:entries acc) seq-description)})
+                                :entries (conj (:entries acc) (seq-description-without-impl-details seq-description))})
                              (sequence-descriptions context (:model entry) (:rest-seq acc))))
                       seq-descriptions))]
       (reduce f [{:length 0
@@ -102,7 +109,7 @@
                         (map (fn [seq-description]
                                {:length (+ (:length acc) (:length seq-description))
                                 :rest-seq (:rest-seq seq-description)
-                                :entries (conj (:entries acc) seq-description)})
+                                :entries (conj (:entries acc) (seq-description-without-impl-details seq-description))})
                              (sequence-descriptions context elements-model (:rest-seq acc))))
                       seq-descriptions))]
       (->> (iterate f [{:length 0
@@ -120,69 +127,9 @@
         (if (:valid? description)
           (list {:length 1
                  :rest-seq (next seq-data)
-                 :entry description})
+                 :description description})
           '()))
       '())))
-
-(comment
-  (sequence-descriptions {}
-                         ; [:cat :foo1 [:+ pos-int?]
-                         ;       :foo2 [:+ int?]]
-                         {:type :cat
-                          :entries [{:model {:type :repeat
-                                             :min 1
-                                             :max ##Inf
-                                             :elements-model {:type :fn
-                                                              :fn pos-int?}}}
-                                    {:model {:type :repeat
-                                             :min 1
-                                             :max ##Inf
-                                             :elements-model {:type :fn
-                                                              :fn int?}}}]}
-                         [3 4 0 2])
-
-  (sequence-descriptions {}
-                         {:type :repeat
-                          :min 0
-                          :max 2
-                          :elements-model {:type :fn
-                                           :fn int?}}
-                        (seq [1 2]))
-
-  (sequence-descriptions {}
-                         {:type :alt
-                          :entries [{:key :ints
-                                     :model {:type :repeat
-                                             :min 0
-                                             :max 2
-                                             :elements-model {:type :fn
-                                                              :fn int?}}}
-                                    {:key :keywords
-                                     :model {:type :repeat
-                                             :min 0
-                                             :max 2
-                                             :elements-model {:type :fn
-                                                              :fn keyword?}}}]}
-                        (seq [1 2]))
-
-  (sequence-descriptions {}
-                         ; [:* int?]
-                         {:type :repeat
-                          :min 0
-                          :max ##Inf
-                          :elements-model {:type :fn
-                                           :fn int?}}
-                         (seq [1 :2]))
-
-  (sequence-descriptions {}
-                         ; [:+ int?]
-                         {:type :repeat
-                          :min 1
-                          :max ##Inf
-                          :elements-model {:type :fn
-                                           :fn int?}}
-                         (seq [1 2 3])))
-
 
 ;;---
 
@@ -241,24 +188,19 @@
   "Returns a structure describing what parts of the data are not matching the model."
   [model data])
 
-;; My hardship comes from the implementation of :and and :or,
-;; the rest is a piece of cake.
-
 ;; There are 2 kinds of predicates:
 ;; - structural (they test the existence of a structure),
-;; - non-structural (they test properties on structureless values).
+;; - logical (they test properties on values and lead to booleans, they are not used to describe their structure).
 
 ;; Structural predicates can be predefined extensively:
 ;; [:set :map :sequence :alt :cat :repeat]
 
-;; Non-structural predicates are everything else, for instance:
+;; Logical predicates are everything else, for instance:
 ;; [:fn :enum :and :or]
 
-;; To be considered:
-;; - using :alt instead of :or when testing on different kind of structures,
-;;   in other word:
-;;   - :or is only for non-structural models, (e.g. [:or odd? prime?])
-;;   - :alt only for structural models (e.g. [:alt [:my-set set?] [:my-vec vector?]])
+;; Re-design of the :or and :alt :
+;;   - :or is only for non-structural tests, (e.g. [:or even? prime?])
+;;   - :alt is used for any kind of branching, structural or logical.
 
 (defn describe
   "Returns a descriptions of the data's structure using a hierarchy of hash-maps."
@@ -346,10 +288,10 @@
                                                                :vector vector?}) data)
                                  (implies (contains? model :count-model)
                                           (:valid? (describe context (:count-model model) (count data)))))
-                          (let [descriptions (filter (comp nil? :rest-seq)
-                                                     (sequence-descriptions context model (seq data)))]
-                            (if (seq descriptions)
-                              {:entries (:entries (first descriptions))
+                          (let [seq-descriptions (filter (comp nil? :rest-seq)
+                                                         (sequence-descriptions context model (seq data)))]
+                            (if (seq seq-descriptions)
+                              {:entries (:entries (first seq-descriptions))
                                :valid? true}
                               {:valid? false}))
                           {:valid? false})

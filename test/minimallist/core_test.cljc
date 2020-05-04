@@ -2,7 +2,69 @@
   (:require [clojure.test :refer [deftest testing is are]]
             [clojure.walk :as walk]
             [clojure.set :as set]
-            [minimallist.core :refer [valid? explain describe undescribe]]))
+            [minimallist.core :refer [valid? explain describe undescribe] :as m]))
+
+(comment
+  (#'m/sequence-descriptions {}
+                             ; [:cat [:+ pos-int?]
+                             ;       [:+ int?]]
+                             {:type :cat
+                              :entries [{:model {:type :repeat
+                                                 :min 1
+                                                 :max ##Inf
+                                                 :elements-model {:type :fn
+                                                                  :fn pos-int?}}}
+                                        {:model {:type :repeat
+                                                 :min 1
+                                                 :max ##Inf
+                                                 :elements-model {:type :fn
+                                                                  :fn int?}}}]}
+                             [3 4 0 2])
+
+  (#'m/sequence-descriptions {}
+                             ; [:repeat {:min 0, :max 2} int?]
+                             {:type :repeat
+                              :min 0
+                              :max 2
+                              :elements-model {:type :fn
+                                               :fn int?}}
+                             (seq [1 2]))
+
+  (#'m/sequence-descriptions {}
+                             ; [:alt [:ints     [:repeat {:min 0, :max 2} int?]]
+                             ;       [:keywords [:repeat {:min 0, :max 2} keyword?]]
+                             {:type :alt
+                              :entries [{:key :ints
+                                         :model {:type :repeat
+                                                 :min 0
+                                                 :max 2
+                                                 :elements-model {:type :fn
+                                                                  :fn int?}}}
+                                        {:key :keywords
+                                         :model {:type :repeat
+                                                 :min 0
+                                                 :max 2
+                                                 :elements-model {:type :fn
+                                                                  :fn keyword?}}}]}
+                             (seq [1 2]))
+
+  (#'m/sequence-descriptions {}
+                             ; [:* int?]
+                             {:type :repeat
+                              :min 0
+                              :max ##Inf
+                              :elements-model {:type :fn
+                                               :fn int?}}
+                             (seq [1 :2]))
+
+  (#'m/sequence-descriptions {}
+                             ; [:+ int?]
+                             {:type :repeat
+                              :min 1
+                              :max ##Inf
+                              :elements-model {:type :fn
+                                               :fn int?}}
+                             (seq [1 2 3])))
 
 (deftest valid?-test
   (let [test-data [;; fn
