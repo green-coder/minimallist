@@ -128,3 +128,6 @@
 (defn in-list [sequence-model]
   (assoc sequence-model :coll-type :list))
 
+;; For alt, cat and repeat
+(defn not-inlined [sequence-model]
+  (assoc sequence-model :inlined false))

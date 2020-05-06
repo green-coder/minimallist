@@ -77,7 +77,8 @@
   "Returns a sequence of possible descriptions from the seq-data matching a model."
   [context model seq-data]
   (cond
-    (= (:type model) :alt)
+    (and (= (:type model) :alt)
+         (:inlined model true))
     (mapcat (fn [entry]
               (map (fn [seq-description]
                      {:key (:key entry)
