@@ -182,7 +182,7 @@
                                                        :vector vector?}) data)
                          (some nil? (left-overs context model (seq data))))
      :let (valid? (merge context (:bindings model)) (:body model) data)
-     :ref (valid? context (get context (:ref model)) data))))
+     :ref (valid? context (get context (:key model)) data))))
 
 (defn explain
   "Returns a structure describing what parts of the data are not matching the model."
@@ -296,7 +296,7 @@
                               {:valid? false}))
                           {:valid? false})
          :let (describe (merge context (:bindings model)) (:body model) data)
-         :ref (describe context (get context (:ref model)) data))
+         :ref (describe context (get context (:key model)) data))
        (assoc :context context ;; maybe: (post-fn description context model data)
               :model model
               :data data))))

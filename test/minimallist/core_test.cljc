@@ -335,7 +335,7 @@
                                                      {:model {:type :fn
                                                               :fn   even?}}]}}
                     :body     {:type :ref
-                               :ref  'pos-even?}}
+                               :key  'pos-even?}}
                    [2 4]
                    [-2 -1 0 1 3]]]
 
@@ -810,7 +810,7 @@
                                                      {:model {:type :fn
                                                               :fn   even?}}]}}
                     :body     {:type :ref
-                               :ref  'pos-even?}}
+                               :key  'pos-even?}}
                    #{:context :model :data}
                    [0 {:valid? false}
                     1 {:valid? false}
