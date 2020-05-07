@@ -302,6 +302,13 @@
               :model model
               :data data))))
 
+;; TODO: Treat the attributes independently of the type of the node in which they appear.
+;;       That's a kind of composition pattern a-la-unity.
+
+;; TODO: Check the validity of the model's structure via .. a model :-)
+;;       We need a model of the hash-map based models to guide the user
+;;       and avoid having him/her losing hairs.
+
 (defn undescribe
   "Returns a data which matches a description."
   [model description])

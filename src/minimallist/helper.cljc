@@ -1,7 +1,31 @@
 (ns minimallist.helper
-  (:refer-clojure :exclude [fn val or and map vector-of list vector cat repeat ? * + let ref]))
+  (:refer-clojure :exclude [fn val or and map sequence vector-of list vector cat repeat ? * + let ref]))
 
+;;
 ;; Some helper functions to compose hash-map based models
+;;
+
+
+; Modifiers, can be used with the -> macro
+
+;; For set-of and sequence-of
+(defn with-count [collection-model count-model]
+  (assoc collection-model :count-model count-model))
+
+;; For cat and repeat
+(defn in-vector [sequence-model]
+  (assoc sequence-model :coll-type :vector))
+
+;; For cat and repeat
+(defn in-list [sequence-model]
+  (assoc sequence-model :coll-type :list))
+
+;; For alt, cat and repeat
+(defn not-inlined [sequence-model]
+  (assoc sequence-model :inlined false))
+
+
+;; the main functions
 
 (defn fn [predicate]
   {:type :fn
@@ -43,19 +67,18 @@
    :keys {:model keys-model}
    :values {:model values-model}})
 
+(defn sequence []
+  {:type :sequence})
+
 (defn sequence-of [elements-model]
   {:type :sequence
    :elements-model elements-model})
 
 (defn list-of [elements-model]
-  {:type :sequence
-   :coll-type :list
-   :elements-model elements-model})
+  (-> (sequence-of elements-model) (in-list)))
 
 (defn vector-of [elements-model]
-  {:type :sequence
-   :coll-type :vector
-   :elements-model elements-model})
+  (-> (sequence-of elements-model) (in-vector)))
 
 (defn tuple [& models]
   {:type :sequence
@@ -64,18 +87,10 @@
                   models)})
 
 (defn list [& models]
-  {:type :sequence
-   :coll-type :list
-   :entries (mapv (clojure.core/fn [model]
-                    {:model model})
-                  models)})
+  (-> (apply tuple models) (in-list)))
 
 (defn vector [& models]
-  {:type :sequence
-   :coll-type :vector
-   :entries (mapv (clojure.core/fn [model]
-                    {:model model})
-                  models)})
+  (-> (apply tuple models) (in-vector)))
 
 (defn alt [& named-entries]
   {:type :alt
@@ -113,21 +128,3 @@
 (defn ref [key]
   {:type :ref
    :key key})
-
-; Modifiers, can be used with the -> macro
-
-;; For set-of and sequence-of
-(defn with-count [collection-model count-model]
-  (assoc collection-model :count-model count-model))
-
-;; For cat and repeat
-(defn in-vector [sequence-model]
-  (assoc sequence-model :coll-type :vector))
-
-;; For cat and repeat
-(defn in-list [sequence-model]
-  (assoc sequence-model :coll-type :list))
-
-;; For alt, cat and repeat
-(defn not-inlined [sequence-model]
-  (assoc sequence-model :inlined false))

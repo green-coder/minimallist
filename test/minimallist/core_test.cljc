@@ -1,341 +1,196 @@
 (ns minimallist.core-test
   (:require [clojure.test :refer [deftest testing is are]]
-            [clojure.walk :as walk]
-            [clojure.set :as set]
-            [minimallist.core :refer [valid? explain describe undescribe] :as m]))
+            [minimallist.core :refer [valid? explain describe undescribe] :as m]
+            [minimallist.helper :as h]
+            [minimallist.util :as util]))
 
 (comment
   (#'m/sequence-descriptions {}
     ; [:cat [:+ pos-int?]
     ;       [:+ int?]]
-    {:type    :cat
-     :entries [{:model {:type           :repeat
-                        :min            1
-                        :max            ##Inf
-                        :elements-model {:type :fn
-                                         :fn   pos-int?}}}
-               {:model {:type           :repeat
-                        :min            1
-                        :max            ##Inf
-                        :elements-model {:type :fn
-                                         :fn   int?}}}]}
+    (h/cat (h/+ (h/fn pos-int?))
+           (h/+ (h/fn int?)))
     [3 4 0 2])
 
   (#'m/sequence-descriptions {}
     ; [:repeat {:min 0, :max 2} int?]
-    {:type           :repeat
-     :min            0
-     :max            2
-     :elements-model {:type :fn
-                      :fn   int?}}
+    (h/repeat 0 2 (h/fn int?))
     (seq [1 2]))
 
   (#'m/sequence-descriptions {}
     ; [:alt [:ints     [:repeat {:min 0, :max 2} int?]]
     ;       [:keywords [:repeat {:min 0, :max 2} keyword?]]
-    {:type    :alt
-     :entries [{:key   :ints
-                :model {:type           :repeat
-                        :min            0
-                        :max            2
-                        :elements-model {:type :fn
-                                         :fn   int?}}}
-               {:key   :keywords
-                :model {:type           :repeat
-                        :min            0
-                        :max            2
-                        :elements-model {:type :fn
-                                         :fn   keyword?}}}]}
+    (h/alt :ints (h/repeat 0 2 (h/fn int?))
+           :keywords (h/repeat 0 2 (h/fn keyword?)))
     (seq [1 2]))
 
   (#'m/sequence-descriptions {}
     ; [:* int?]
-    {:type           :repeat
-     :min            0
-     :max            ##Inf
-     :elements-model {:type :fn
-                      :fn   int?}}
+    (h/* (h/fn int?))
     (seq [1 :2]))
 
   (#'m/sequence-descriptions {}
     ; [:+ int?]
-    {:type           :repeat
-     :min            1
-     :max            ##Inf
-     :elements-model {:type :fn
-                      :fn   int?}}
+    (h/+ (h/fn int?))
     (seq [1 2 3])))
 
 (deftest valid?-test
   (let [test-data [;; fn
-                   {:type :fn
-                    :fn   #(= 1 %)}
+                   (h/fn #(= 1 %))
                    [1]
                    [2]
 
                    ;; enum
-                   {:type   :enum
-                    :values #{1 "2" :3}}
+                   (h/enum #{1 "2" :3})
                    [1 "2" :3]
                    [[1] 2 true false nil]
 
-                   {:type   :enum
-                    :values #{nil false}}
+                   (h/enum #{nil false})
                    [nil false]
                    [true '()]
 
                    ;; and
-                   {:type    :and
-                    :entries [{:model {:type :fn
-                                       :fn   pos-int?}}
-                              {:model {:type :fn
-                                       :fn   even?}}]}
+                   (h/and (h/fn pos-int?)
+                          (h/fn even?))
                    [2 4 6]
                    [0 :a -1 1 3]
 
                    ;; or
-                   {:type    :or
-                    :entries [{:model {:type :fn
-                                       :fn   pos-int?}}
-                              {:model {:type :fn
-                                       :fn   even?}}]}
+                   (h/or (h/fn pos-int?)
+                         (h/fn even?))
                    [-2 0 1 2 3]
                    [-3 -1]
 
                    ;; set
-                   {:type           :set
-                    :count-model    {:type   :enum
-                                     :values #{2 3}}
-                    :elements-model {:type :fn
-                                     :fn   int?}}
+                   (-> (h/set-of (h/fn int?))
+                       (h/with-count (h/enum #{2 3})))
                    [#{1 2} #{1 2 3}]
                    [#{1 :a} [1 2 3] '(1 2) `(1 ~2) #{1} #{1 2 3 4}]
 
                    ;; map, entries
-                   {:type    :map
-                    :entries [{:key   :a
-                               :model {:type :fn
-                                       :fn   int?}}
-                              {:key   :b
-                               :model {:type :fn
-                                       :fn   string?}}
-                              {:key   (list 1 2 3)
-                               :model {:type :fn
-                                       :fn   string?}}]}
+                   (h/map :a (h/fn int?)
+                          :b (h/fn string?)
+                          (list 1 2 3) (h/fn string?))
                    [{:a 1, :b "foo", (list 1 2 3) "you can count on me like ..."}
                     {:a 10, :b "bar", [1 2 3] "soleil !"}]
                    [{:a 1, :b "foo"}
                     {:a 1, :b "foo", #{1 2 3} "bar"}]
 
                    ;; map, keys and values
-                   {:type   :map
-                    :keys   {:model {:type :fn
-                                     :fn   keyword?}}
-                    :values {:model {:type :fn
-                                     :fn   int?}}}
+                   (h/map-of (h/fn keyword?)
+                             (h/fn int?))
                    [{} {:a 1, :b 2}]
                    [{:a 1, :b "2"} [[:a 1] [:b 2]] {true 1, false 2}]
 
                    ;; sequence, no collection type specified
-                   {:type           :sequence
-                    :elements-model {:type :fn
-                                     :fn   int?}}
+                   (h/sequence-of (h/fn int?))
                    ['(1 2 3) [1 2 3] `(1 2 ~3)]
                    ['(1 :a) #{1 2 3} {:a 1, :b 2, :c 3}]
 
                    ;; sequence as a list
-                   {:type           :sequence
-                    :coll-type      :list
-                    :elements-model {:type :fn
-                                     :fn   int?}}
+                   (h/list-of (h/fn int?))
                    ['(1 2 3)]
                    ['(1 :a) [1 2 3] #{1 2 3}
                     #_`(1 2 ~3)]                            ; this is not a list in cljs]
 
                    ;; sequence as a vector
-                   {:type           :sequence
-                    :coll-type      :vector
-                    :elements-model {:type :fn
-                                     :fn   int?}}
+                   (h/vector-of (h/fn int?))
                    [[1 2 3]]
                    [[1 :a] '(1 2 3) #{1 2 3} `(1 2 ~3)]
 
-                   ;; sequence with fixed size
-                   {:type        :sequence
-                    :count-model {:type   :enum
-                                  :values #{2 3}}}
+                   ;; sequence with size specified using a model
+                   (-> (h/sequence) (h/with-count (h/enum #{2 3})))
                    ['(1 2) [1 "2"] `(1 ~"2") [1 "2" :3]]
                    [#{1 "a"} [1 "2" :3 :4]]
 
                    ;; sequence with entries (fixed size is implied)
-                   {:type    :sequence
-                    :entries [{:model {:type :fn
-                                       :fn   int?}}
-                              {:model {:type :fn
-                                       :fn   string?}}]}
+                   (h/tuple (h/fn int?) (h/fn string?))
                    ['(1 "2") [1 "2"] `(1 ~"2")]
                    [#{1 "a"} [1 "2" :3]]
 
                    ;; alt
-                   {:type    :alt
-                    :entries [{:key   :int
-                               :model {:type :fn
-                                       :fn   int?}}
-                              {:key   :strings
-                               :model {:type    :cat
-                                       :entries [{:model {:type :fn
-                                                          :fn   string?}}]}}]}
+                   (h/alt :int (h/fn int?)
+                          :strings (h/cat (h/fn string?)))
                    [1 ["1"]]
                    [[1] "1" :1 [:1]]
 
                    ;; alt - inside a cat
-                   {:type    :cat
-                    :entries [{:model {:type :fn
-                                       :fn   int?}}
-                              {:model {:type    :alt
-                                       :entries [{:key   :string
-                                                  :model {:type :fn
-                                                          :fn   string?}}
-                                                 {:key   :keyword
-                                                  :model {:type :fn
-                                                          :fn   keyword?}}
-                                                 {:key   :string-keyword
-                                                  :model {:type    :cat
-                                                          :entries [{:model {:type :fn
-                                                                             :fn   string?}}
-                                                                    {:model {:type :fn
-                                                                             :fn   keyword?}}]}}]}}
-                              {:model {:type :fn
-                                       :fn   int?}}]}
+                   (h/cat (h/fn int?)
+                          (h/alt :string (h/fn string?)
+                                 :keyword (h/fn keyword?)
+                                 :string-keyword (h/cat (h/fn string?)
+                                                        (h/fn keyword?)))
+                          (h/fn int?))
                    [[1 "2" 3] [1 :2 3] [1 "a" :b 3]]
                    [[1 ["a" :b] 3]]
 
                    ;; alt - inside a cat, but with :inline false on its cat entry
-                   {:type    :cat
-                    :entries [{:model {:type :fn
-                                       :fn   int?}}
-                              {:model {:type    :alt
-                                       :entries [{:key   :string
-                                                  :model {:type :fn
-                                                          :fn   string?}}
-                                                 {:key   :keyword
-                                                  :model {:type :fn
-                                                          :fn   keyword?}}
-                                                 {:key   :string-keyword
-                                                  :model {:type    :cat
-                                                          :inlined false
-                                                          :entries [{:model {:type :fn
-                                                                             :fn   string?}}
-                                                                    {:model {:type :fn
-                                                                             :fn   keyword?}}]}}]}}
-                              {:model {:type :fn
-                                       :fn   int?}}]}
+                   (h/cat (h/fn int?)
+                          (h/alt :string (h/fn string?)
+                                 :keyword (h/fn keyword?)
+                                 :string-keyword (-> (h/cat (h/fn string?)
+                                                            (h/fn keyword?))
+                                                     (h/not-inlined)))
+                          (h/fn int?))
                    [[1 "2" 3] [1 :2 3] [1 ["a" :b] 3]]
                    [[1 "a" :b 3]]
 
                    ;; cat of cat, the inner cat is implicitly inlined
-                   {:type      :cat
-                    :coll-type :vector
-                    :entries   [{:model {:type :fn
-                                         :fn   int?}}
-                                {:model {:type    :cat
-                                         :entries [{:model {:type :fn
-                                                            :fn   int?}}]}}]}
+                   (-> (h/cat (h/fn int?)
+                              (h/cat (h/fn int?)))
+                       (h/in-vector))
                    [[1 2]]
                    [[1] [1 [2]] [1 2 3] '(1) '(1 2) '(1 (2)) '(1 2 3)]
 
                    ;; cat of cat, the inner cat is explicitly not inlined
-                   {:type    :cat
-                    :entries [{:model {:type :fn
-                                       :fn   int?}}
-                              {:model {:type    :cat
-                                       :inlined false
-                                       :entries [{:model {:type :fn
-                                                          :fn   int?}}]}}]}
-                   [[1 [2]] [1 '(2)]]
+                   (-> (h/cat (h/fn int?)
+                              (-> (h/cat (h/fn int?))
+                                  (h/not-inlined))))
+                   [[1 [2]] '[1 (2)] '(1 (2))]
                    [[1] [1 2] [1 [2] 3]]
 
                    ;; repeat - no collection type specified
-                   {:type           :repeat
-                    :min            0
-                    :max            2
-                    :elements-model {:type :fn
-                                     :fn   int?}}
+                   (h/repeat 0 2 (h/fn int?))
                    [[] [1] [1 2] '() '(1) '(2 3)]
                    [[1 2 3] '(1 2 3)]
 
                    ;; repeat - inside a vector
-                   {:type           :repeat
-                    :coll-type      :vector
-                    :min            0
-                    :max            2
-                    :elements-model {:type :fn
-                                     :fn   int?}}
+                   (h/in-vector (h/repeat 0 2 (h/fn int?)))
                    [[] [1] [1 2]]
                    [[1 2 3] '() '(1) '(2 3) '(1 2 3)]
 
                    ;; repeat - inside a list
-                   {:type           :repeat
-                    :coll-type      :list
-                    :min            0
-                    :max            2
-                    :elements-model {:type :fn
-                                     :fn   int?}}
+                   (h/in-list (h/repeat 0 2 (h/fn int?)))
                    ['() '(1) '(2 3)]
                    [[] [1] [1 2] [1 2 3] '(1 2 3)]
 
                    ;; repeat - min > 0
-                   {:type           :repeat
-                    :min            2
-                    :max            3
-                    :elements-model {:type :fn
-                                     :fn   int?}}
+                   (h/repeat 2 3 (h/fn int?))
                    [[1 2] [1 2 3]]
                    [[] [1] [1 2 3 4]]
 
                    ;; repeat - max = +Infinity
-                   {:type           :repeat
-                    :min            2
-                    :max            ##Inf
-                    :elements-model {:type :fn
-                                     :fn   int?}}
+                   (h/repeat 2 ##Inf (h/fn int?))
                    [[1 2] [1 2 3] [1 2 3 4]]
                    [[] [1]]
 
                    ;; repeat - of a cat
-                   {:type           :repeat
-                    :min            1
-                    :max            2
-                    :elements-model {:type    :cat
-                                     :entries [{:model {:type :fn
-                                                        :fn   int?}}
-                                               {:model {:type :fn
-                                                        :fn   string?}}]}}
+                   (h/repeat 1 2 (h/cat (h/fn int?)
+                                        (h/fn string?)))
                    [[1 "a"] [1 "a" 2 "b"]]
                    [[] [1] [1 2] [1 "a" 2 "b" 3 "c"]]
 
                    ;; repeat - of a cat with :inlined false
-                   {:type           :repeat
-                    :min            1
-                    :max            2
-                    :elements-model {:type    :cat
-                                     :inlined false
-                                     :entries [{:model {:type :fn
-                                                        :fn   int?}}
-                                               {:model {:type :fn
-                                                        :fn   string?}}]}}
+                   (h/repeat 1 2 (-> (h/cat (h/fn int?)
+                                            (h/fn string?))
+                                     (h/not-inlined)))
                    [[[1 "a"]] [[1 "a"] [2 "b"]] ['(1 "a") [2 "b"]]]
                    [[] [1] [1 2] [1 "a"] [1 "a" 2 "b"] [1 "a" 2 "b" 3 "c"]]
 
                    ;; let / ref
-                   {:type     :let
-                    :bindings {'pos-even? {:type    :and
-                                           :entries [{:model {:type :fn
-                                                              :fn   pos-int?}}
-                                                     {:model {:type :fn
-                                                              :fn   even?}}]}}
-                    :body     {:type :ref
-                               :key  'pos-even?}}
+                   (h/let ['pos-even? (h/and (h/fn pos-int?)
+                                             (h/fn even?))]
+                          (h/ref 'pos-even?))
                    [2 4]
                    [-2 -1 0 1 3]]]
 
@@ -345,21 +200,6 @@
       (doseq [data invalid-coll]
         (is (not (valid? model data)))))))
 
-
-
-
-(defn- cleanup-description [description keys-to-remove]
-  (walk/postwalk
-    (fn [node]
-      (if (and (map? node)
-               (set/subset? #{:context :model :data} (set (keys node))))
-        (as-> node xxx
-              (cond-> xxx (contains? node :valid?) (update :valid? boolean))
-              (update xxx :model select-keys [:type])
-              (apply dissoc xxx keys-to-remove))
-
-        node))
-    description))
 
 (deftest describe-test
   (let [test-data [;; fn
@@ -816,12 +656,9 @@
                     1 {:valid? false}
                     2 {:valid? true}
                     3 {:valid? false}
-                    4 {:valid? true}]
-
-                   #__]]
-
+                    4 {:valid? true}]]]
 
     (doseq [[model keys-to-remove data-description-pairs] (partition 3 test-data)]
       (doseq [[data description] (partition 2 data-description-pairs)]
-        (is (= [data (cleanup-description (describe model data) keys-to-remove)]
+        (is (= [data (util/cleanup-description (describe model data) keys-to-remove)]
                [data description]))))))
