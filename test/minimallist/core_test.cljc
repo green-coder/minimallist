@@ -203,15 +203,13 @@
 
 (deftest describe-test
   (let [test-data [;; fn
-                   {:type :fn
-                    :fn   #(= 1 %)}
+                   (h/fn #(= 1 %))
                    #{:context :model :data}
                    [1 {:valid? true}
                     2 {:valid? false}]
 
                    ;; enum
-                   {:type   :enum
-                    :values #{1 "2" false nil}}
+                   (h/enum #{1 "2" false nil})
                    #{:context :model :data}
                    [1 {:valid? true}
                     "2" {:valid? true}
@@ -220,11 +218,8 @@
                     true {:valid? false}]
 
                    ;; and
-                   {:type    :and
-                    :entries [{:model {:type :fn
-                                       :fn   pos-int?}}
-                              {:model {:type :fn
-                                       :fn   even?}}]}
+                   (h/and (h/fn pos-int?)
+                          (h/fn even?))
                    #{:context :model :data}
                    [0 {:valid? false}
                     1 {:valid? false}
@@ -233,35 +228,23 @@
                     4 {:valid? true}]
 
                    ;; or
-                   {:type    :or
-                    :entries [{:model {:type :fn
-                                       :fn   int?}}
-                              {:model {:type :fn
-                                       :fn   string?}}]}
+                   (h/or (h/fn int?)
+                         (h/fn string?))
                    #{:context :model :data}
                    [1 {:valid? true}
                     "a" {:valid? true}
                     :a {:valid? false}]
 
                    ;; set
-                   {:type           :set
-                    :elements-model {:type :fn
-                                     :fn   int?}}
+                   (h/set-of (h/fn int?))
                    #{:context :model :data}
                    [#{1} {:entries #{{:valid? true}}
                           :valid?  true}]
 
                    ;; map
-                   {:type    :map
-                    :entries [{:key   :a
-                               :model {:type :fn
-                                       :fn   int?}}
-                              {:key   :b
-                               :model {:type    :or
-                                       :entries [{:model {:type :fn
-                                                          :fn   int?}}
-                                                 {:model {:type :fn
-                                                          :fn   string?}}]}}]}
+                   (h/map :a (h/fn int?)
+                          :b (h/or (h/fn int?)
+                                   (h/fn string?)))
                    #{:context :model :data}
                    [{:a 1, :b 2} {:entries {:a {:valid? true}
                                             :b {:valid? true}}
@@ -282,25 +265,19 @@
                                         :valid?  true}]
 
                    ;; map - :keys
-                   {:type :map
-                    :keys {:model {:type :fn
-                                   :fn   keyword?}}}
+                   (-> (h/map) (h/with-keys (h/fn keyword?)))
                    #{:context :model :data}
                    [{:a 1, :b 2} {:valid? true}
                     {"a" 1} {:valid? false}]
 
                    ;; map - :values
-                   {:type   :map
-                    :values {:model {:type :fn
-                                     :fn   int?}}}
+                   (-> (h/map) (h/with-values (h/fn int?)))
                    #{:context :model :data}
                    [{:a 1, "b" 2} {:valid? true}
                     {:a "1"} {:valid? false}]
 
                    ;; sequence - :elements-model
-                   {:type           :sequence
-                    :elements-model {:type :fn
-                                     :fn   int?}}
+                   (h/sequence-of (h/fn int?))
                    #{:context :model :data}
                    [[1 2 3] {:entries [{:valid? true}
                                        {:valid? true}
@@ -316,18 +293,13 @@
                                :valid?  false}]
 
                    ;; sequence - :coll-type vector
-                   {:type      :sequence
-                    :coll-type :vector}
+                   (-> (h/sequence) (h/in-vector))
                    #{:context :model :data}
                    [[1 2 3] {:valid? true}
                     '(1 2 3) {:valid? false}]
 
                    ;; sequence - :entries
-                   {:type    :sequence
-                    :entries [{:model {:type :fn
-                                       :fn   int?}}
-                              {:model {:type :fn
-                                       :fn   string?}}]}
+                   (h/tuple (h/fn int?) (h/fn string?))
                    #{:context :model :data}
                    [[1 "a"] {:entries [{:valid? true}
                                        {:valid? true}]
@@ -339,23 +311,15 @@
                          :valid?  false}]
 
                    ;; sequence - :count-model
-                   {:type        :sequence
-                    :count-model {:type   :enum
-                                  :values #{3}}}
+                   (-> (h/sequence) (h/with-count (h/val 3)))
                    #{:context :model :data}
                    [[1 2] {:valid? false}
                     [1 2 3] {:valid? true}
                     [1 2 3 4] {:valid? false}]
 
                    ;; alt - not inside a sequence
-                   {:type    :alt
-                    :entries [{:key   :number
-                               :model {:type :fn
-                                       :fn   int?}}
-                              {:key   :sequence
-                               :model {:type    :cat
-                                       :entries [{:model {:type :fn
-                                                          :fn   string?}}]}}]}
+                   (h/alt :number (h/fn int?)
+                          :sequence (h/cat (h/fn string?)))
                    #{:context :model :data}
                    [1 {:valid? true
                        :key    :number
@@ -368,24 +332,12 @@
                     "1" {:valid? false}]
 
                    ;; alt - inside a cat
-                   {:type    :cat
-                    :entries [{:model {:type :fn
-                                       :fn   int?}}
-                              {:model {:type    :alt
-                                       :entries [{:key   :option1
-                                                  :model {:type :fn
-                                                          :fn   string?}}
-                                                 {:key   :option2
-                                                  :model {:type :fn
-                                                          :fn   keyword?}}
-                                                 {:key   :option3
-                                                  :model {:type    :cat
-                                                          :entries [{:model {:type :fn
-                                                                             :fn   string?}}
-                                                                    {:model {:type :fn
-                                                                             :fn   keyword?}}]}}]}}
-                              {:model {:type :fn
-                                       :fn   int?}}]}
+                   (h/cat (h/fn int?)
+                          (h/alt :option1 (h/fn string?)
+                                 :option2 (h/fn keyword?)
+                                 :option3 (h/cat (h/fn string?)
+                                                 (h/fn keyword?)))
+                          (h/fn int?))
                    #{:context :model :data}
                    [[1 "2" 3] {:valid?  true
                                :entries [{:valid? true}
@@ -406,25 +358,12 @@
                     [1 ["a" :b] 3] {:valid? false}]
 
                    ;; alt - inside a cat, but with :inline false on its cat entry
-                   {:type    :cat
-                    :entries [{:model {:type :fn
-                                       :fn   int?}}
-                              {:model {:type    :alt
-                                       :entries [{:key   :option1
-                                                  :model {:type :fn
-                                                          :fn   string?}}
-                                                 {:key   :option2
-                                                  :model {:type :fn
-                                                          :fn   keyword?}}
-                                                 {:key   :option3
-                                                  :model {:type    :cat
-                                                          :inlined false
-                                                          :entries [{:model {:type :fn
-                                                                             :fn   string?}}
-                                                                    {:model {:type :fn
-                                                                             :fn   keyword?}}]}}]}}
-                              {:model {:type :fn
-                                       :fn   int?}}]}
+                   (h/cat (h/fn int?)
+                          (h/alt :option1 (h/fn string?)
+                                 :option2 (h/fn keyword?)
+                                 :option3 (h/not-inlined (h/cat (h/fn string?)
+                                                                (h/fn keyword?))))
+                          (h/fn int?))
                    #{:context :model :data}
                    [[1 "2" 3] {:valid?  true
                                :entries [{:valid? true}
@@ -446,12 +385,8 @@
                                               {:valid? true}]}]
 
                    ;; cat of cat, the inner cat is implicitly inlined
-                   {:type    :cat
-                    :entries [{:model {:type :fn
-                                       :fn   int?}}
-                              {:model {:type    :cat
-                                       :entries [{:model {:type :fn
-                                                          :fn   int?}}]}}]}
+                   (h/cat (h/fn int?)
+                          (h/cat (h/fn int?)))
                    #{:context :model :data}
                    [[1 2] {:valid?  true
                            :entries [{:valid? true}
@@ -461,13 +396,8 @@
                     [1 2 3] {:valid? false}]
 
                    ;; cat of cat, the inner cat is explicitly not inlined
-                   {:type    :cat
-                    :entries [{:model {:type :fn
-                                       :fn   int?}}
-                              {:model {:type    :cat
-                                       :inlined false
-                                       :entries [{:model {:type :fn
-                                                          :fn   int?}}]}}]}
+                   (h/cat (h/fn int?)
+                          (h/not-inlined (h/cat (h/fn int?))))
                    #{:context :model :data}
                    [[1 [2]] {:valid?  true
                              :entries [{:valid? true}
@@ -482,11 +412,7 @@
                     [1 [2] 3] {:valid? false}]
 
                    ;; repeat - no collection type specified
-                   {:type           :repeat
-                    :min            0
-                    :max            2
-                    :elements-model {:type :fn
-                                     :fn   int?}}
+                   (h/repeat 0 2 (h/fn int?))
                    #{:context :model :data}
                    [[] {:entries []
                         :valid?  true}
@@ -506,35 +432,23 @@
                     '(1 2 3) {:valid? false}]
 
                    ;; repeat - inside a vector
-                   {:type           :repeat
-                    :coll-type      :vector
-                    :min            0
-                    :max            2
-                    :elements-model {:type :fn
-                                     :fn   int?}}
+                   (-> (h/repeat 0 2 (h/fn int?))
+                       (h/in-vector))
                    #{:context :model :data}
                    [[1] {:valid?  true
                          :entries [{:valid? true}]}
                     '(1) {:valid? false}]
 
                    ;; repeat - inside a list
-                   {:type           :repeat
-                    :coll-type      :list
-                    :min            0
-                    :max            2
-                    :elements-model {:type :fn
-                                     :fn   int?}}
+                   (-> (h/repeat 0 2 (h/fn int?))
+                       (h/in-list))
                    #{:context :model :data}
                    [[1] {:valid? false}
                     '(1) {:valid?  true
                           :entries [{:valid? true}]}]
 
                    ;; repeat - min > 0
-                   {:type           :repeat
-                    :min            2
-                    :max            3
-                    :elements-model {:type :fn
-                                     :fn   int?}}
+                   (h/repeat 2 3 (h/fn int?))
                    #{:context :model :data}
                    [[] {:valid? false}
                     [1] {:valid? false}
@@ -548,11 +462,7 @@
                     [1 2 3 4] {:valid? false}]
 
                    ;; repeat - max = +Infinity
-                   {:type           :repeat
-                    :min            2
-                    :max            ##Inf
-                    :elements-model {:type :fn
-                                     :fn   int?}}
+                   (h/repeat 2 ##Inf (h/fn int?))
                    #{:context :model}
                    [[] {:valid? false, :data []}
                     [1] {:valid? false, :data [1]}
@@ -572,14 +482,8 @@
                                         :data   3}]}]
 
                    ;; repeat - of a cat
-                   {:type           :repeat
-                    :min            1
-                    :max            2
-                    :elements-model {:type    :cat
-                                     :entries [{:model {:type :fn
-                                                        :fn   int?}}
-                                               {:model {:type :fn
-                                                        :fn   string?}}]}}
+                   (h/repeat 1 2 (h/cat (h/fn int?)
+                                        (h/fn string?)))
                    #{:context :model}
                    [[1 "a"] {:valid?  true
                              :data    [1 "a"]
@@ -607,15 +511,8 @@
                                          :data   [1 "a" 2 "b" 3 "c"]}]
 
                    ;; repeat - of a cat with :inlined false
-                   {:type           :repeat
-                    :min            1
-                    :max            2
-                    :elements-model {:type    :cat
-                                     :inlined false
-                                     :entries [{:model {:type :fn
-                                                        :fn   int?}}
-                                               {:model {:type :fn
-                                                        :fn   string?}}]}}
+                   (h/repeat 1 2 (h/not-inlined (h/cat (h/fn int?)
+                                                       (h/fn string?))))
                    #{:context :model :data}
                    [[[1 "a"]] {:valid?  true
                                :entries [{:valid?  true
@@ -643,14 +540,9 @@
                     [1 "a" 2 "b" 3 "c"] {:valid? false}]
 
                    ;; let / ref
-                   {:type     :let
-                    :bindings {'pos-even? {:type    :and
-                                           :entries [{:model {:type :fn
-                                                              :fn   pos-int?}}
-                                                     {:model {:type :fn
-                                                              :fn   even?}}]}}
-                    :body     {:type :ref
-                               :key  'pos-even?}}
+                   (h/let ['pos-even? (h/and (h/fn pos-int?)
+                                             (h/fn even?))]
+                          (h/ref 'pos-even?))
                    #{:context :model :data}
                    [0 {:valid? false}
                     1 {:valid? false}

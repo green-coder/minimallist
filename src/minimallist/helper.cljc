@@ -12,6 +12,18 @@
 (defn with-count [collection-model count-model]
   (assoc collection-model :count-model count-model))
 
+;; For map
+(defn with-keys [map-model keys-model]
+  (assoc map-model :keys {:model keys-model}))
+
+;; For map
+(defn with-values [map-model values-model]
+  (assoc map-model :values {:model values-model}))
+
+;;; For any structure node
+;(defn with-condition [collection-model condition-model]
+;  (assoc collection-model :condition-model condition-model))
+
 ;; For cat and repeat
 (defn in-vector [sequence-model]
   (assoc sequence-model :coll-type :vector))
@@ -55,17 +67,18 @@
   {:type :set
    :elements-model elements-model})
 
-(defn map [& named-entries]
-  {:type :map
-   :entries (mapv (clojure.core/fn [[key model]]
-                    {:key key
-                     :model model})
-                  (partition 2 named-entries))})
+(defn map
+  ([]
+   {:type :map})
+  ([& named-entries]
+   {:type :map
+    :entries (mapv (clojure.core/fn [[key model]]
+                     {:key key
+                      :model model})
+                  (partition 2 named-entries))}))
 
 (defn map-of [keys-model values-model]
-  {:type :map
-   :keys {:model keys-model}
-   :values {:model values-model}})
+  (-> (map) (with-keys keys-model) (with-values values-model)))
 
 (defn sequence []
   {:type :sequence})
