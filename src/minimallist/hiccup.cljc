@@ -24,9 +24,9 @@
    [:set-of {:count #{2 3}} int?]
 
    [:map
-    :a int?
-    :b string?
-    (list 1 2 3) string?]
+    [:a int?]
+    [:b {:optional true} string?]
+    [(list 1 2 3) string?]]
 
    [:map-of keyword? int?]
 
@@ -66,7 +66,7 @@
   (h/let ['model (h/alt
                    :immediate-fn (h/fn fn?)
                    :fn (h/in-vector (h/cat (h/val :fn)
-                                           (h/? (h/map :gen (h/fn any?)))
+                                           (h/? (h/map [:gen {:optional true} (h/fn any?)]))
                                            (h/fn fn?)))
                    :immediate-enum (h/set-of (h/fn any?))
                    :enum (h/vector (h/val :enum)
@@ -76,22 +76,25 @@
                    :or (h/in-vector (h/cat (h/val :or)
                                            (h/+ (h/ref 'model))))
                    :set-of (h/in-vector (h/cat (h/val :set-of)
-                                               (h/? (h/map :count (h/ref 'model)))
+                                               (h/? (h/map [:count {:optional true} (h/ref 'model)]))
                                                (h/ref 'model)))
                    :map (h/in-vector (h/cat (h/val :map)
-                                            (h/+ (h/cat (h/fn any?)
-                                                        (h/ref 'model)))))
+                                            (h/+ (-> (h/cat (h/fn any?)
+                                                            (h/? (h/map [:optional {:optional true} (h/fn boolean?)]))
+                                                            (h/ref 'model))
+                                                     (h/not-inlined)
+                                                     (h/in-vector)))))
                    :map-of (h/vector (h/val :map-of)
                                      (h/ref 'model)
                                      (h/ref 'model))
                    :sequence-of (h/in-vector (h/cat (h/val :sequence-of)
-                                                    (h/? (h/map :count (h/ref 'model)))
+                                                    (h/? (h/map [:count {:optional true} (h/ref 'model)]))
                                                     (h/ref 'model)))
                    :list-of (h/in-vector (h/cat (h/val :list-of)
-                                                (h/? (h/map :count (h/ref 'model)))
+                                                (h/? (h/map [:count {:optional true} (h/ref 'model)]))
                                                 (h/ref 'model)))
                    :vector-of (h/in-vector (h/cat (h/val :vector-of)
-                                                  (h/? (h/map :count (h/ref 'model)))
+                                                  (h/? (h/map [:count {:optional true} (h/ref 'model)]))
                                                   (h/ref 'model)))
                    :tuple (h/in-vector (h/cat (h/val :tuple)
                                               (h/+ (h/ref 'model))))

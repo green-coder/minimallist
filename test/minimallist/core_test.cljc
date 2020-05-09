@@ -68,13 +68,15 @@
                    [#{1 :a} [1 2 3] '(1 2) `(1 ~2) #{1} #{1 2 3 4}]
 
                    ;; map, entries
-                   (h/map :a (h/fn int?)
-                          :b (h/fn string?)
-                          (list 1 2 3) (h/fn string?))
+                   (h/map [:a (h/fn int?)]
+                          [:b {:optional true} (h/fn string?)]
+                          [(list 1 2 3) (h/fn string?)])
                    [{:a 1, :b "foo", (list 1 2 3) "you can count on me like ..."}
-                    {:a 10, :b "bar", [1 2 3] "soleil !"}]
+                    {:a 1, :b "bar", [1 2 3] "soleil !"}
+                    {:a 1, [1 2 3] "soleil !"}]
                    [{:a 1, :b "foo"}
-                    {:a 1, :b "foo", #{1 2 3} "bar"}]
+                    {:a 1, :b "foo", #{1 2 3} "bar"}
+                    {:a 1, :b 'bar, [1 2 3] "soleil !"}]
 
                    ;; map, keys and values
                    (h/map-of (h/fn keyword?)
@@ -242,9 +244,9 @@
                           :valid?  true}]
 
                    ;; map
-                   (h/map :a (h/fn int?)
-                          :b (h/or (h/fn int?)
-                                   (h/fn string?)))
+                   (h/map [:a (h/fn int?)]
+                          [:b (h/or (h/fn int?)
+                                    (h/fn string?))])
                    #{:context :model :data}
                    [{:a 1, :b 2} {:entries {:a {:valid? true}
                                             :b {:valid? true}}

@@ -1,5 +1,6 @@
 (ns minimallist.helper
-  (:refer-clojure :exclude [fn val or and map sequence vector-of list vector cat repeat ? * + let ref]))
+  (:refer-clojure :exclude [fn val or and map sequence vector-of list vector cat repeat ? * + let ref])
+  (:require [clojure.core :as cl]))
 
 ;;
 ;; Some helper functions to compose hash-map based models
@@ -8,9 +9,35 @@
 
 ; Modifiers, can be used with the -> macro
 
+(defn- elm-options-elm [args]
+  (if (= (count args) 2)
+    [(first args) nil (second args)]
+    args))
+
 ;; For set-of and sequence-of
 (defn with-count [collection-model count-model]
   (assoc collection-model :count-model count-model))
+
+;; For map
+(defn with-entries [map-model entries]
+   (assoc map-model
+     :entries (mapv (comp (cl/fn [[key options model]]
+                            (assoc options
+                              :key key
+                              :model model))
+                          elm-options-elm)
+                    entries)))
+
+;; For map
+(defn with-optional-entries [map-model entries]
+   (assoc map-model
+     :entries (mapv (comp (cl/fn [[key options model]]
+                            (assoc options
+                              :optional true
+                              :key key
+                              :model model))
+                          elm-options-elm)
+                    entries)))
 
 ;; For map
 (defn with-keys [map-model keys-model]
@@ -53,13 +80,13 @@
 
 (defn and [& conditions]
   {:type :and
-   :entries (mapv (clojure.core/fn [entry]
+   :entries (mapv (cl/fn [entry]
                     {:model entry})
                   conditions)})
 
 (defn or [& conditions]
   {:type :or
-   :entries (mapv (clojure.core/fn [entry]
+   :entries (mapv (cl/fn [entry]
                     {:model entry})
                   conditions)})
 
@@ -70,12 +97,8 @@
 (defn map
   ([]
    {:type :map})
-  ([& named-entries]
-   {:type :map
-    :entries (mapv (clojure.core/fn [[key model]]
-                     {:key key
-                      :model model})
-                  (partition 2 named-entries))}))
+  ([& entries]
+   (-> (map) (with-entries entries))))
 
 (defn map-of [keys-model values-model]
   (-> (map) (with-keys keys-model) (with-values values-model)))
@@ -95,7 +118,7 @@
 
 (defn tuple [& models]
   {:type :sequence
-   :entries (mapv (clojure.core/fn [model]
+   :entries (mapv (cl/fn [model]
                     {:model model})
                   models)})
 
@@ -107,14 +130,14 @@
 
 (defn alt [& named-entries]
   {:type :alt
-   :entries (mapv (clojure.core/fn [[key model]]
+   :entries (mapv (cl/fn [[key model]]
                     {:key key
                      :model model})
                   (partition 2 named-entries))})
 
 (defn cat [& entries]
   {:type :cat
-   :entries (mapv (clojure.core/fn [entry]
+   :entries (mapv (cl/fn [entry]
                     {:model entry})
                   entries)})
 

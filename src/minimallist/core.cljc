@@ -156,8 +156,9 @@
      :map (and (map? data)
                (implies (contains? model :entries)
                         (every? (fn [entry]
-                                  (and (contains? data (:key entry))
-                                       (valid? context (:model entry) (get data (:key entry)))))
+                                  (if (contains? data (:key entry))
+                                    (valid? context (:model entry) (get data (:key entry)))
+                                    (:optional entry)))
                                 (:entries model)))
                (implies (contains? model :keys)
                         (every? (partial valid? context (-> model :keys :model)) (keys data)))
@@ -228,11 +229,11 @@
                 (let [entries (when (or (contains? model :entries)
                                         (contains? model :values))
                                 (into {}
-                                      (map (fn [entry]
-                                             [(:key entry)
+                                      (keep (fn [entry]
                                               (if (contains? data (:key entry))
-                                                (describe context (:model entry) (get data (:key entry)))
-                                                {:missing? true})]))
+                                                [(:key entry) (describe context (:model entry) (get data (:key entry)))]
+                                                (when-not (:optional entry)
+                                                  [(:key entry) {:missing? true}]))))
                                       (:entries model)))]
                   (cond-> {:valid? (and (implies (contains? model :entries)
                                                  (every? :valid? (vals entries)))
