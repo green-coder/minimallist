@@ -47,9 +47,9 @@
 (defn with-values [map-model values-model]
   (assoc map-model :values {:model values-model}))
 
-;;; For any structure node
-;(defn with-condition [collection-model condition-model]
-;  (assoc collection-model :condition-model condition-model))
+;; For any structural node
+(defn with-condition [collection-model condition-model]
+  (assoc collection-model :condition-model condition-model))
 
 ;; For cat and repeat
 (defn in-vector [sequence-model]

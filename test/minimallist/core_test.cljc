@@ -89,11 +89,17 @@
                    ['(1 2 3) [1 2 3] `(1 2 ~3)]
                    ['(1 :a) #{1 2 3} {:a 1, :b 2, :c 3}]
 
+                   ;; sequence, with condition
+                   (-> (h/sequence-of (h/fn int?))
+                       (h/with-condition (h/fn (fn [coll] (= coll (reverse coll))))))
+                   [[1] '(1 1) '[1 2 1]]
+                   ['(1 2) '(1 2 3)]
+
                    ;; sequence as a list
                    (h/list-of (h/fn int?))
                    ['(1 2 3)]
                    ['(1 :a) [1 2 3] #{1 2 3}
-                    #_`(1 2 ~3)]                            ; this is not a list in cljs]
+                    #_`(1 2 ~3)]                            ; this is not a list in cljs
 
                    ;; sequence as a vector
                    (h/vector-of (h/fn int?))
@@ -244,7 +250,7 @@
                           :valid?  true}]
 
                    ;; map
-                   (h/map [:a (h/fn int?)]
+                   (h/map [:a {:optional true} (h/fn int?)]
                           [:b (h/or (h/fn int?)
                                     (h/fn string?))])
                    #{:context :model :data}
@@ -257,6 +263,9 @@
                     {:a 1, :b [1 2]} {:entries {:a {:valid? true}
                                                 :b {:valid? false}}
                                       :valid?  false}
+                    ; missing optional entry
+                    {:b 2} {:entries {:b {:valid? true}}
+                            :valid?  true}
                     ; missing entry
                     {:a 1} {:entries {:a {:valid? true}
                                       :b {:missing? true}}
@@ -293,6 +302,16 @@
                                          {:valid? false}
                                          {:valid? true}]
                                :valid?  false}]
+
+                   ;; sequence - :elements-model with condition
+                   (-> (h/sequence-of (h/fn int?))
+                       (h/with-condition (h/fn (fn [coll] (= coll (reverse coll))))))
+                   #{:context :model :data}
+                   [[1 2 1] {:entries [{:valid? true}
+                                       {:valid? true}
+                                       {:valid? true}]
+                             :valid?  true}
+                    '(1 2 3) {:valid? false}]
 
                    ;; sequence - :coll-type vector
                    (-> (h/sequence) (h/in-vector))
