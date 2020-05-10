@@ -40,26 +40,24 @@
 
     (and (= (:type model) :cat)
          (:inlined model true))
-    (let [f (fn -left-overs [seq-entries seq-data]
-              (if seq-entries
-                (let [[{:keys [model]} & next-entries] seq-entries
-                      left-overs-coll (left-overs context model seq-data)]
-                  (mapcat (partial -left-overs next-entries) left-overs-coll))
-                (list seq-data)))]
-      (f (seq (:entries model)) seq-data))
+    (let [f (fn [seqs-data entry]
+              (mapcat (fn [seq-data]
+                        (left-overs context (:model entry) seq-data))
+                      seqs-data))]
+      (reduce f [seq-data] (:entries model)))
 
     (and (= (:type model) :repeat)
          (:inlined model true))
     (let [{:keys [min max elements-model]} model
-          f (fn -left-overs [nb-matched seq-data]
-              (if (< nb-matched max)
-                (let [left-overs-coll (left-overs context elements-model seq-data)
-                      rest (mapcat (partial -left-overs (inc nb-matched)) left-overs-coll)]
-                  (if (<= min nb-matched)
-                    (cons seq-data rest)
-                    rest))
-                (list seq-data)))]
-      (f 0 seq-data))
+          f (fn [seqs-data]
+              (mapcat (fn [seq-data]
+                        (left-overs context elements-model seq-data))
+                      seqs-data))]
+      (->> (iterate f [seq-data])
+           (take-while seq)
+           (take (inc max)) ; inc because it includes the "match zero times"
+           (drop min)
+           (apply concat)))
 
     (and (= (:type model) :let)
          (:inlined model true))
