@@ -32,7 +32,8 @@
   "Returns a sequence of possible left-overs from the seq-data after matching the model with it."
   [context model seq-data]
   (cond
-    (= (:type model) :alt)
+    (and (= (:type model) :alt)
+         (:inlined model true))
     (mapcat (fn [entry]
               (left-overs context (:model entry) seq-data))
             (:entries model))
@@ -59,6 +60,14 @@
                     rest))
                 (list seq-data)))]
       (f 0 seq-data))
+
+    (and (= (:type model) :let)
+         (:inlined model true))
+    (left-overs (merge context (:bindings model)) (:body model) seq-data)
+
+    (and (= (:type model) :ref)
+         (:inlined model true))
+    (left-overs context (get context (:key model)) seq-data)
 
     :else
     (if (and seq-data
@@ -121,6 +130,14 @@
            (drop min)
            (reverse) ; longest repetitions first
            (apply concat)))
+
+    (and (= (:type model) :let)
+         (:inlined model true))
+    (sequence-descriptions (merge context (:bindings model)) (:body model) seq-data)
+
+    (and (= (:type model) :ref)
+         (:inlined model true))
+    (sequence-descriptions context (get context (:key model)) seq-data)
 
     :else
     (if seq-data

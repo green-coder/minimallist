@@ -200,7 +200,43 @@
                                              (h/fn even?))]
                           (h/ref 'pos-even?))
                    [2 4]
-                   [-2 -1 0 1 3]]]
+                   [-2 -1 0 1 3]
+
+                   ;; let / ref - with structural recursion
+                   (h/let ['hiccup (h/alt
+                                     :node (h/in-vector (h/cat (h/fn keyword?)
+                                                               (h/? (h/map))
+                                                               (h/* (h/not-inlined (h/ref 'hiccup)))))
+                                     :primitive (h/or (h/fn nil?)
+                                                      (h/fn boolean?)
+                                                      (h/fn number?)
+                                                      (h/fn string?)))]
+                          (h/ref 'hiccup))
+                   [nil
+                    false
+                    1
+                    "hi"
+                    [:div]
+                    [:div {}]
+                    [:div "hei" [:p "bonjour"]]
+                    [:div {:a 1} "hei" [:p "bonjour"]]]
+                   [{}
+                    {:a 1}
+                    ['div]
+                    [:div {:a 1} "hei" [:p {} {} "bonjour"]]]
+
+                   ;; let / ref - with recursion within a sequence
+                   (h/let ['foo (h/cat (h/fn int?)
+                                       (h/? (h/ref 'foo))
+                                       (h/fn string?))]
+                          (h/ref 'foo))
+                   [[1 "hi"]
+                    [1 1 "hi" "hi"]
+                    [1 1 1 "hi" "hi" "hi"]]
+                   [[1 1 "hi"]
+                    [1 "hi" "hi"]
+                    [1 1 :no "hi" "hi"]]]]
+
 
     (doseq [[model valid-coll invalid-coll] (partition 3 test-data)]
       (doseq [data valid-coll]
