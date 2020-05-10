@@ -31,47 +31,33 @@
 (defn- left-overs
   "Returns a sequence of possible left-overs from the seq-data after matching the model with it."
   [context model seq-data]
-  (cond
-    (and (= (:type model) :alt)
-         (:inlined model true))
-    (mapcat (fn [entry]
-              (left-overs context (:model entry) seq-data))
-            (:entries model))
-
-    (and (= (:type model) :cat)
-         (:inlined model true))
-    (let [f (fn [seqs-data entry]
-              (mapcat (fn [seq-data]
-                        (left-overs context (:model entry) seq-data))
-                      seqs-data))]
-      (reduce f [seq-data] (:entries model)))
-
-    (and (= (:type model) :repeat)
-         (:inlined model true))
-    (let [{:keys [min max elements-model]} model
-          f (fn [seqs-data]
-              (mapcat (fn [seq-data]
-                        (left-overs context elements-model seq-data))
-                      seqs-data))]
-      (->> (iterate f [seq-data])
-           (take-while seq)
-           (take (inc max)) ; inc because it includes the "match zero times"
-           (drop min)
-           (apply concat)))
-
-    (and (= (:type model) :let)
-         (:inlined model true))
-    (left-overs (merge context (:bindings model)) (:body model) seq-data)
-
-    (and (= (:type model) :ref)
-         (:inlined model true))
-    (left-overs context (get context (:key model)) seq-data)
-
-    :else
+  (if (and (#{:alt :cat :repeat :let :ref} (:type model))
+           (:inlined model true))
+    (case (:type model)
+      :alt (mapcat (fn [entry]
+                     (left-overs context (:model entry) seq-data))
+                   (:entries model))
+      :cat (reduce (fn [seqs-data entry]
+                     (mapcat (fn [seq-data]
+                               (left-overs context (:model entry) seq-data))
+                             seqs-data))
+                   [seq-data]
+                   (:entries model))
+      :repeat (->> (iterate (fn [seqs-data]
+                              (mapcat (fn [seq-data]
+                                        (left-overs context (:elements-model model) seq-data))
+                                      seqs-data))
+                            [seq-data])
+                   (take-while seq)
+                   (take (inc (:max model))) ; inc because it includes the "match zero times"
+                   (drop (:min model))
+                   (apply concat))
+      :let (left-overs (merge context (:bindings model)) (:body model) seq-data)
+      :ref (left-overs context (get context (:key model)) seq-data))
     (if (and seq-data
              (valid? context (dissoc model :inlined) (first seq-data)))
-      (list (next seq-data))
-      '())))
+      [(next seq-data)]
+      [])))
 
 ;; This may be removed once we have the zipper visitor working.
 (defn- seq-description-without-impl-details [seq-description]
@@ -83,69 +69,55 @@
 (defn- sequence-descriptions
   "Returns a sequence of possible descriptions from the seq-data matching a model."
   [context model seq-data]
-  (cond
-    (and (= (:type model) :alt)
-         (:inlined model true))
-    (mapcat (fn [entry]
-              (map (fn [seq-description]
-                     {:key (:key entry)
-                      :length (:length seq-description)
-                      :rest-seq (:rest-seq seq-description)
-                      :entry (seq-description-without-impl-details seq-description)})
-                   (sequence-descriptions context (:model entry) seq-data)))
-            (:entries model))
-
-    (and (= (:type model) :cat)
-         (:inlined model true))
-    (let [f (fn [seq-descriptions entry]
-              (mapcat (fn [acc]
-                        (map (fn [seq-description]
-                               {:length (+ (:length acc) (:length seq-description))
-                                :rest-seq (:rest-seq seq-description)
-                                :entries (conj (:entries acc) (seq-description-without-impl-details seq-description))})
-                             (sequence-descriptions context (:model entry) (:rest-seq acc))))
-                      seq-descriptions))]
-      (reduce f [{:length 0
-                  :rest-seq seq-data
-                  :entries []}] (:entries model)))
-
-    (and (= (:type model) :repeat)
-         (:inlined model true))
-    (let [{:keys [min max elements-model]} model
-          f (fn [seq-descriptions]
-              (mapcat (fn [acc]
-                        (map (fn [seq-description]
-                               {:length (+ (:length acc) (:length seq-description))
-                                :rest-seq (:rest-seq seq-description)
-                                :entries (conj (:entries acc) (seq-description-without-impl-details seq-description))})
-                             (sequence-descriptions context elements-model (:rest-seq acc))))
-                      seq-descriptions))]
-      (->> (iterate f [{:length 0
-                        :rest-seq seq-data
-                        :entries []}])
-           (take-while seq)
-           (take (inc max)) ; inc because it includes the "match zero times"
-           (drop min)
-           (reverse) ; longest repetitions first
-           (apply concat)))
-
-    (and (= (:type model) :let)
-         (:inlined model true))
-    (sequence-descriptions (merge context (:bindings model)) (:body model) seq-data)
-
-    (and (= (:type model) :ref)
-         (:inlined model true))
-    (sequence-descriptions context (get context (:key model)) seq-data)
-
-    :else
+  (if (and (#{:alt :cat :repeat :let :ref} (:type model))
+           (:inlined model true))
+    (case (:type model)
+      :alt (mapcat (fn [entry]
+                     (map (fn [seq-description]
+                            {:key (:key entry)
+                             :length (:length seq-description)
+                             :rest-seq (:rest-seq seq-description)
+                             :entry (seq-description-without-impl-details seq-description)})
+                          (sequence-descriptions context (:model entry) seq-data)))
+                   (:entries model))
+      :cat (reduce (fn [seq-descriptions entry]
+                     (mapcat (fn [acc]
+                               (map (fn [seq-description]
+                                      {:length (+ (:length acc) (:length seq-description))
+                                       :rest-seq (:rest-seq seq-description)
+                                       :entries (conj (:entries acc) (seq-description-without-impl-details seq-description))})
+                                    (sequence-descriptions context (:model entry) (:rest-seq acc))))
+                             seq-descriptions))
+                   [{:length 0
+                     :rest-seq seq-data
+                     :entries []}]
+                   (:entries model))
+      :repeat (->> (iterate (fn [seq-descriptions]
+                              (mapcat (fn [acc]
+                                        (map (fn [seq-description]
+                                               {:length (+ (:length acc) (:length seq-description))
+                                                :rest-seq (:rest-seq seq-description)
+                                                :entries (conj (:entries acc) (seq-description-without-impl-details seq-description))})
+                                             (sequence-descriptions context (:elements-model model) (:rest-seq acc))))
+                                      seq-descriptions))
+                            [{:length 0
+                              :rest-seq seq-data
+                              :entries []}])
+                   (take-while seq)
+                   (take (inc (:max model))) ; inc because it includes the "match zero times"
+                   (drop (:min model))
+                   (reverse) ; longest repetitions first
+                   (apply concat))
+      :let (sequence-descriptions (merge context (:bindings model)) (:body model) seq-data)
+      :ref (sequence-descriptions context (get context (:key model)) seq-data))
     (if seq-data
       (let [description (describe context (dissoc model :inlined) (first seq-data))]
         (if (:valid? description)
-          (list {:length 1
-                 :rest-seq (next seq-data)
-                 :description description})
-          '()))
-      '())))
+          [{:length 1
+            :rest-seq (next seq-data)
+            :description description}]
+          []))
+      [])))
 
 ;;---
 
