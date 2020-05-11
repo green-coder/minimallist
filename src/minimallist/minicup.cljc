@@ -1,4 +1,4 @@
-(ns minimallist.hiccup
+(ns minimallist.minicup
   (:require [minimallist.core :as m]
             [minimallist.helper :as h]))
 
