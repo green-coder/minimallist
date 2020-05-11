@@ -1,5 +1,5 @@
 (ns minimallist.helper
-  (:refer-clojure :exclude [fn val or and map sequence vector-of list vector cat repeat ? * + let ref])
+  (:refer-clojure :exclude [fn val and or set map sequence vector-of list vector cat repeat ? * + let ref])
   (:require [clojure.core :as cl]))
 
 ;;
@@ -91,6 +91,9 @@
    :entries (mapv (cl/fn [entry]
                     {:model entry})
                   conditions)})
+
+(defn set []
+  {:type :set})
 
 (defn set-of [elements-model]
   {:type :set
