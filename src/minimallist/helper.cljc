@@ -21,22 +21,24 @@
 ;; For map
 (defn with-entries [map-model entries]
    (assoc map-model
-     :entries (mapv (comp (cl/fn [[key options model]]
-                            (assoc options
-                              :key key
-                              :model model))
-                          elm-options-elm)
+     :entries (into (:entries map-model [])
+                    (comp (cl/map elm-options-elm)
+                          (cl/map (cl/fn [[key options model]]
+                                    (assoc options
+                                      :key key
+                                      :model model))))
                     entries)))
 
 ;; For map
 (defn with-optional-entries [map-model entries]
    (assoc map-model
-     :entries (mapv (comp (cl/fn [[key options model]]
-                            (assoc options
-                              :optional true
-                              :key key
-                              :model model))
-                          elm-options-elm)
+     :entries (into (:entries map-model [])
+                    (comp (cl/map elm-options-elm)
+                          (cl/map (cl/fn [[key options model]]
+                                   (assoc options
+                                     :optional true
+                                     :key key
+                                     :model model))))
                     entries)))
 
 ;; For map
