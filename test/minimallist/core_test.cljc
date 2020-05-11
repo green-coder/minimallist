@@ -347,7 +347,10 @@
                                        {:valid? true}
                                        {:valid? true}]
                              :valid?  true}
-                    '(1 2 3) {:valid? false}]
+                    '(1 2 3) {:entries [{:valid? true}
+                                        {:valid? true}
+                                        {:valid? true}]
+                              :valid? false}]
 
                    ;; sequence - :coll-type vector
                    (-> (h/sequence) (h/in-vector))

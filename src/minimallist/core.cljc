@@ -137,14 +137,13 @@
                         (valid? context (:model entry) data))
                       (:entries model))
      :set (and (set? data)
-               (implies (contains? model :condition-model)
-                        (valid? context (:condition-model model) data))
                (implies (contains? model :count-model)
                         (valid? context (:count-model model) (count data)))
-               (every? (partial valid? context (:elements-model model)) data))
-     :map (and (map? data)
+               (implies (contains? model :elements-model)
+                        (every? (partial valid? context (:elements-model model)) data))
                (implies (contains? model :condition-model)
-                        (valid? context (:condition-model model) data))
+                        (valid? context (:condition-model model) data)))
+     :map (and (map? data)
                (implies (contains? model :entries)
                         (every? (fn [entry]
                                   (if (contains? data (:key entry))
@@ -154,28 +153,34 @@
                (implies (contains? model :keys)
                         (every? (partial valid? context (-> model :keys :model)) (keys data)))
                (implies (contains? model :values)
-                        (every? (partial valid? context (-> model :values :model)) (vals data))))
+                        (every? (partial valid? context (-> model :values :model)) (vals data)))
+               (implies (contains? model :condition-model)
+                        (valid? context (:condition-model model) data)))
      :sequence (and (sequential? data)
                     ((-> (:coll-type model :any) {:any any?
                                                   :list list?
                                                   :vector vector?}) data)
-                    (implies (contains? model :condition-model)
-                             (valid? context (:condition-model model) data))
-                    (implies (contains? model :elements-model)
-                             (every? (partial valid? context (:elements-model model)) data))
-                    (implies (contains? model :count-model)
-                             (valid? context (:count-model model) (count data)))
                     (implies (contains? model :entries)
                              (and (= (count (:entries model)) (count data))
                                   (every? true? (map (fn [entry data-element]
                                                        (valid? context (:model entry) data-element))
                                                      (:entries model)
-                                                     data)))))
+                                                     data))))
+                    (implies (contains? model :count-model)
+                             (valid? context (:count-model model) (count data)))
+                    (implies (contains? model :elements-model)
+                             (every? (partial valid? context (:elements-model model)) data))
+                    (implies (contains? model :condition-model)
+                             (valid? context (:condition-model model) data)))
      (:cat :repeat) (and (sequential? data)
                          ((-> (:coll-type model :any) {:any any?
                                                        :list list?
                                                        :vector vector?}) data)
-                         (some nil? (left-overs context model (seq data))))
+                         (some nil? (left-overs context model (seq data)))
+                         (implies (contains? model :count-model)
+                                  (valid? context (:count-model model) (count data)))
+                         (implies (contains? model :condition-model)
+                                  (valid? context (:condition-model model) data)))
      :let (valid? (merge context (:bindings model)) (:body model) data)
      :ref (valid? context (get context (:key model)) data))))
 
@@ -211,27 +216,26 @@
          :or {:valid? (some (fn [entry]
                               (:valid? (describe context (:model entry) data)))
                             (:entries model))}
-         :set (if (and (set? data)
-                       (implies (contains? model :condition-model)
-                                (:valid? (describe context (:condition-model model) data))))
-                (let [entries (into #{} (map (partial describe context (:elements-model model))) data)]
-                  {:valid? (and (implies (contains? model :count-model)
-                                         (:valid? (describe context (:count-model model) (count data))))
-                                (every? :valid? entries))
-                   :entries entries})
-                {:valid? false})
-         :map (if (and (map? data)
-                       (implies (contains? model :condition-model)
-                                (:valid? (describe context (:condition-model model) data))))
-                (let [entries (when (or (contains? model :entries)
-                                        (contains? model :values))
-                                (into {}
-                                      (keep (fn [entry]
-                                              (if (contains? data (:key entry))
-                                                [(:key entry) (describe context (:model entry) (get data (:key entry)))]
-                                                (when-not (:optional entry)
-                                                  [(:key entry) {:missing? true}]))))
-                                      (:entries model)))]
+         :set (if (set? data)
+                (let [entries (when (contains? model :elements-model)
+                                (into #{}
+                                      (map (partial describe context (:elements-model model)))
+                                      data))]
+                  (cond-> {:valid? (and (implies (contains? model :elements-model)
+                                                 (every? :valid? entries))
+                                        (implies (contains? model :count-model)
+                                                 (:valid? (describe context (:count-model model) (count data))))
+                                        (implies (contains? model :condition-model)
+                                                 (:valid? (describe context (:condition-model model) data))))}
+                          (contains? model :elements-model) (assoc :entries entries))))
+         :map (if (map? data)
+                (let [entries (into {}
+                                    (keep (fn [entry]
+                                            (if (contains? data (:key entry))
+                                              [(:key entry) (describe context (:model entry) (get data (:key entry)))]
+                                              (when-not (:optional entry)
+                                                [(:key entry) {:missing? true}]))))
+                                    (:entries model))]
                   (cond-> {:valid? (and (implies (contains? model :entries)
                                                  (every? :valid? (vals entries)))
                                         (implies (contains? model :keys)
@@ -243,12 +247,12 @@
                                                            (:valid? (if (contains? entries key)
                                                                       (get entries key)
                                                                       (describe context (-> model :values :model) (get data key)))))
-                                                         (keys data))))}
+                                                         (keys data)))
+                                        (implies (contains? model :condition-model)
+                                                 (:valid? (describe context (:condition-model model) data))))}
                           (contains? model :entries) (assoc :entries entries)))
                 {:valid? false})
-         :sequence (if (and (sequential? data)
-                            (implies (contains? model :condition-model)
-                                     (:valid? (describe context (:condition-model model) data))))
+         :sequence (if (sequential? data)
                      (let [entries (into [] (cond
                                               (contains? model :elements-model) (map (fn [data-element]
                                                                                        (describe context (:elements-model model) data-element))
@@ -261,13 +265,15 @@
                        (cond-> {:valid? (and (({:any any?
                                                 :list list?
                                                 :vector vector?} (:coll-type model :any)) data)
-                                             (implies (contains? model :elements-model)
-                                                      (every? :valid? entries))
-                                             (implies (contains? model :count-model)
-                                                      (:valid? (describe context (:count-model model) (count data))))
                                              (implies (contains? model :entries)
                                                       (and (= (count (:entries model)) (count data))
-                                                           (every? :valid? entries))))}
+                                                           (every? :valid? entries)))
+                                             (implies (contains? model :count-model)
+                                                      (:valid? (describe context (:count-model model) (count data))))
+                                             (implies (contains? model :elements-model)
+                                                      (every? :valid? entries))
+                                             (implies (contains? model :condition-model)
+                                                      (:valid? (describe context (:condition-model model) data))))}
                                (or (contains? model :elements-model)
                                    (contains? model :entries)) (assoc :entries entries)))
                      {:valid? false})
@@ -293,7 +299,8 @@
                                                          (sequence-descriptions context model (seq data)))]
                             (if (seq seq-descriptions)
                               {:entries (:entries (first seq-descriptions))
-                               :valid? true}
+                               :valid? (implies (contains? model :condition-model)
+                                                (:valid? (describe context (:condition-model model) data)))}
                               {:valid? false}))
                           {:valid? false})
          :let (describe (merge context (:bindings model)) (:body model) data)
