@@ -20,8 +20,8 @@
   (#'m/sequence-descriptions {}
     ; [:alt [:ints     [:repeat {:min 0, :max 2} int?]]
     ;       [:keywords [:repeat {:min 0, :max 2} keyword?]]
-    (h/alt :ints (h/repeat 0 2 (h/fn int?))
-           :keywords (h/repeat 0 2 (h/fn keyword?)))
+    (h/alt [:ints (h/repeat 0 2 (h/fn int?))]
+           [:keywords (h/repeat 0 2 (h/fn keyword?))])
     (seq [1 2]))
 
   (#'m/sequence-descriptions {}
@@ -117,28 +117,28 @@
                    [#{1 "a"} [1 "2" :3]]
 
                    ;; alt
-                   (h/alt :int (h/fn int?)
-                          :strings (h/cat (h/fn string?)))
+                   (h/alt [:int (h/fn int?)]
+                          [:strings (h/cat (h/fn string?))])
                    [1 ["1"]]
                    [[1] "1" :1 [:1]]
 
                    ;; alt - inside a cat
                    (h/cat (h/fn int?)
-                          (h/alt :string (h/fn string?)
-                                 :keyword (h/fn keyword?)
-                                 :string-keyword (h/cat (h/fn string?)
-                                                        (h/fn keyword?)))
+                          (h/alt [:string (h/fn string?)]
+                                 [:keyword (h/fn keyword?)]
+                                 [:string-keyword (h/cat (h/fn string?)
+                                                         (h/fn keyword?))])
                           (h/fn int?))
                    [[1 "2" 3] [1 :2 3] [1 "a" :b 3]]
                    [[1 ["a" :b] 3]]
 
                    ;; alt - inside a cat, but with :inline false on its cat entry
                    (h/cat (h/fn int?)
-                          (h/alt :string (h/fn string?)
-                                 :keyword (h/fn keyword?)
-                                 :string-keyword (-> (h/cat (h/fn string?)
-                                                            (h/fn keyword?))
-                                                     (h/not-inlined)))
+                          (h/alt [:string (h/fn string?)]
+                                 [:keyword (h/fn keyword?)]
+                                 [:string-keyword (-> (h/cat (h/fn string?)
+                                                             (h/fn keyword?))
+                                                      (h/not-inlined))])
                           (h/fn int?))
                    [[1 "2" 3] [1 :2 3] [1 ["a" :b] 3]]
                    [[1 "a" :b 3]]
@@ -204,13 +204,13 @@
 
                    ;; let / ref - with structural recursion
                    (h/let ['hiccup (h/alt
-                                     :node (h/in-vector (h/cat (h/fn keyword?)
-                                                               (h/? (h/map))
-                                                               (h/* (h/not-inlined (h/ref 'hiccup)))))
-                                     :primitive (h/or (h/fn nil?)
-                                                      (h/fn boolean?)
-                                                      (h/fn number?)
-                                                      (h/fn string?)))]
+                                     [:node (h/in-vector (h/cat (h/fn keyword?)
+                                                                (h/? (h/map))
+                                                                (h/* (h/not-inlined (h/ref 'hiccup)))))]
+                                     [:primitive (h/or (h/fn nil?)
+                                                       (h/fn boolean?)
+                                                       (h/fn number?)
+                                                       (h/fn string?))])]
                           (h/ref 'hiccup))
                    [nil
                     false
@@ -378,8 +378,8 @@
                     [1 2 3 4] {:valid? false}]
 
                    ;; alt - not inside a sequence
-                   (h/alt :number (h/fn int?)
-                          :sequence (h/cat (h/fn string?)))
+                   (h/alt [:number (h/fn int?)]
+                          [:sequence (h/cat (h/fn string?))])
                    #{:context :model :data}
                    [1 {:valid? true
                        :key    :number
@@ -393,10 +393,10 @@
 
                    ;; alt - inside a cat
                    (h/cat (h/fn int?)
-                          (h/alt :option1 (h/fn string?)
-                                 :option2 (h/fn keyword?)
-                                 :option3 (h/cat (h/fn string?)
-                                                 (h/fn keyword?)))
+                          (h/alt [:option1 (h/fn string?)]
+                                 [:option2 (h/fn keyword?)]
+                                 [:option3 (h/cat (h/fn string?)
+                                                  (h/fn keyword?))])
                           (h/fn int?))
                    #{:context :model :data}
                    [[1 "2" 3] {:valid?  true
@@ -419,10 +419,10 @@
 
                    ;; alt - inside a cat, but with :inline false on its cat entry
                    (h/cat (h/fn int?)
-                          (h/alt :option1 (h/fn string?)
-                                 :option2 (h/fn keyword?)
-                                 :option3 (h/not-inlined (h/cat (h/fn string?)
-                                                                (h/fn keyword?))))
+                          (h/alt [:option1 (h/fn string?)]
+                                 [:option2 (h/fn keyword?)]
+                                 [:option3 (h/not-inlined (h/cat (h/fn string?)
+                                                                 (h/fn keyword?)))])
                           (h/fn int?))
                    #{:context :model :data}
                    [[1 "2" 3] {:valid?  true
