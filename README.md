@@ -1,6 +1,21 @@
 ## Minimallist
 
-A minimalist data driven data model library, inspired by Spec and Malli.
+A minimalist data driven data model library, inspired by [Clojure Spec](https://clojure.org/guides/spec) and [Malli](https://github.com/metosin/malli).
+
+## Features
+
+- no macro, no static registry, pure functions.
+- fully data driven, models are hash-map based,
+- support recursive definitions, sequence regex,
+- relatively simple implementation, very short to read (about 100 lines of code)
+- helpers functions to create the hash-map models painlessly,
+- cross platform (`.cljc`)
+
+## Non-features
+
+- does not integrate with anything else,
+- does not try hard to be performant,
+- no roadmap or timeline: I made this library mainly for my own usage, and I take my time.
 
 ## Usage
 
@@ -23,7 +38,7 @@ A minimalist data driven data model library, inspired by Spec and Malli.
                       [:p "Hello, world of data"]])
 ```
 
-See the tests for more examples of how to use the helpers to build your models.
+See the [tests](test/) for more examples of how to use the helpers to build your models.
 
 ## Status
 
