@@ -43,10 +43,10 @@
    [:vector int? int? int?] ; vector only
 
    [:alt
-    :int int?
-    :keyword keyword?
-    :ints     [:repeat 0 2 int?]
-    :keywords [:repeat 0 2 keyword?]]
+    [:int int?]
+    [:keyword keyword?]
+    [:ints     [:repeat 0 2 int?]]
+    [:keywords [:repeat 0 2 keyword?]]]
 
    [:cat string? [:+ pos-int?] [:+ int?]]
 
@@ -105,8 +105,10 @@
                    [:vector (h/in-vector (h/cat (h/val :vector)
                                                 (h/+ (h/ref 'model))))]
                    [:alt (h/in-vector (h/cat (h/val :alt)
-                                             (h/+ (h/cat (h/fn any?)
-                                                         (h/ref 'model)))))]
+                                             (h/+ (-> (h/cat (h/fn any?)
+                                                             (h/ref 'model))
+                                                      (h/not-inlined)
+                                                      (h/in-vector)))))]
                    [:cat (h/in-vector (h/cat (h/val :cat)
                                              (h/+ (h/ref 'model))))]
                    [:? (h/vector (h/val :?)
