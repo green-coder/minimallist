@@ -21,7 +21,7 @@
             model (assoc :model model))))
 
 
-;; For :set and :sequence
+;; For :set-of, :set and :sequence-of
 (defn with-count [collection-model count-model]
   (assoc collection-model :count-model count-model))
 
@@ -41,11 +41,11 @@
                                  (assoc :optional true))))
                    entries)))
 
-;; For :map
+;; For :map-of
 (defn with-keys [map-model keys-model]
   (assoc map-model :keys {:model keys-model}))
 
-;; For :map
+;; For :map-of
 (defn with-values [map-model values-model]
   (assoc map-model :values {:model values-model}))
 
@@ -53,11 +53,11 @@
 (defn with-condition [collection-model condition-model]
   (assoc collection-model :condition-model condition-model))
 
-;; For :sequence, :cat and :repeat
+;; For :sequence-of, :sequence, :cat and :repeat
 (defn in-vector [sequence-model]
   (assoc sequence-model :coll-type :vector))
 
-;; For :sequence, :cat and :repeat
+;; For :sequence-of, :sequence, :cat and :repeat
 (defn in-list [sequence-model]
   (assoc sequence-model :coll-type :list))
 
@@ -92,7 +92,7 @@
   {:type :set})
 
 (defn set-of [elements-model]
-  {:type :set
+  {:type :set-of
    :elements-model elements-model})
 
 (defn map
@@ -102,13 +102,13 @@
    (-> (map) (with-entries entries))))
 
 (defn map-of [keys-model values-model]
-  (-> (map) (with-keys keys-model) (with-values values-model)))
+  (-> {:type :map-of} (with-keys keys-model) (with-values values-model)))
 
 (defn sequence []
   {:type :sequence})
 
 (defn sequence-of [elements-model]
-  {:type :sequence
+  {:type :sequence-of
    :elements-model elements-model})
 
 (defn list-of [elements-model]
