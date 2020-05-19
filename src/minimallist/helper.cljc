@@ -122,7 +122,7 @@
   (-> (sequence-of elements-model) (in-vector)))
 
 (defn tuple [& entries]
-  {:type    :sequence
+  {:type :sequence
    :entries (mapv -entry entries)})
 
 (defn list [& entries]
