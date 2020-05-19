@@ -18,6 +18,20 @@
    :alt :cat :repeat
    :let :ref])
 
+;; There are 2 kinds of predicates:
+;; - structural (they test the existence of a structure),
+;; - logical (they test properties on values and lead to booleans, they are not used to describe their structure).
+
+;; Structural predicates can be predefined extensively:
+;; [:set :map :sequence :alt :cat :repeat]
+
+;; Logical predicates are everything else, for instance:
+;; [:fn :enum :and :or]
+
+;; Re-design of the :or and :alt :
+;;   - :or is only for non-structural tests, (e.g. [:or even? prime?])
+;;   - :alt is used for any kind of branching, structural or logical.
+
 ;;---
 
 (defmacro implies [condition & expressions]
@@ -25,8 +39,7 @@
      (do ~@expressions)
      true))
 
-(declare valid?)
-(declare describe)
+(declare -valid?)
 
 (defn- left-overs
   "Returns a sequence of possible left-overs from the seq-data after matching the model with it."
@@ -55,9 +68,70 @@
       :let (left-overs (merge context (:bindings model)) (:body model) seq-data)
       :ref (left-overs context (get context (:key model)) seq-data))
     (if (and seq-data
-             (valid? context (dissoc model :inlined) (first seq-data)))
+             (-valid? context (dissoc model :inlined) (first seq-data)))
       [(next seq-data)]
       [])))
+
+(defn- -valid? [context model data]
+  (case (:type model)
+    :fn ((:fn model) data)
+    :enum (contains? (:values model) data)
+    :and (every? (fn [entry]
+                   (-valid? context (:model entry) data))
+                 (:entries model))
+    (:or :alt) (some (fn [entry]
+                       (-valid? context (:model entry) data))
+                     (:entries model))
+    :set (and (set? data)
+              (implies (contains? model :count-model)
+                       (-valid? context (:count-model model) (count data)))
+              (implies (contains? model :elements-model)
+                       (every? (partial -valid? context (:elements-model model)) data))
+              (implies (contains? model :condition-model)
+                       (-valid? context (:condition-model model) data)))
+    :map (and (map? data)
+              (implies (contains? model :entries)
+                       (every? (fn [entry]
+                                 (if (contains? data (:key entry))
+                                   (-valid? context (:model entry) (get data (:key entry)))
+                                   (:optional entry)))
+                               (:entries model)))
+              (implies (contains? model :keys)
+                       (every? (partial -valid? context (-> model :keys :model)) (keys data)))
+              (implies (contains? model :values)
+                       (every? (partial -valid? context (-> model :values :model)) (vals data)))
+              (implies (contains? model :condition-model)
+                       (-valid? context (:condition-model model) data)))
+    :sequence (and (sequential? data)
+                   ((-> (:coll-type model :any) {:any any?
+                                                 :list list?
+                                                 :vector vector?}) data)
+                   (implies (contains? model :entries)
+                            (and (= (count (:entries model)) (count data))
+                                 (every? true? (map (fn [entry data-element]
+                                                      (-valid? context (:model entry) data-element))
+                                                    (:entries model)
+                                                    data))))
+                   (implies (contains? model :count-model)
+                            (-valid? context (:count-model model) (count data)))
+                   (implies (contains? model :elements-model)
+                            (every? (partial -valid? context (:elements-model model)) data))
+                   (implies (contains? model :condition-model)
+                            (-valid? context (:condition-model model) data)))
+    (:cat :repeat) (and (sequential? data)
+                        ((-> (:coll-type model :any) {:any any?
+                                                      :list list?
+                                                      :vector vector?}) data)
+                        (some nil? (left-overs context model (seq data)))
+                        (implies (contains? model :count-model)
+                                 (-valid? context (:count-model model) (count data)))
+                        (implies (contains? model :condition-model)
+                                 (-valid? context (:condition-model model) data)))
+    :let (-valid? (merge context (:bindings model)) (:body model) data)
+    :ref (-valid? context (get context (:key model)) data)))
+
+
+(declare describe)
 
 ;; This may be removed once we have the zipper visitor working.
 (defn- seq-description-without-impl-details [seq-description]
@@ -122,85 +196,17 @@
 ;;---
 
 ;; API
+
 (defn valid?
   "Return true if the data matches the model, false otherwise."
   ([model data]
    (valid? {} model data))
   ([context model data]
-   (case (:type model)
-     :fn ((:fn model) data)
-     :enum (contains? (:values model) data)
-     :and (every? (fn [entry]
-                    (valid? context (:model entry) data))
-                  (:entries model))
-     (:or :alt) (some (fn [entry]
-                        (valid? context (:model entry) data))
-                      (:entries model))
-     :set (and (set? data)
-               (implies (contains? model :count-model)
-                        (valid? context (:count-model model) (count data)))
-               (implies (contains? model :elements-model)
-                        (every? (partial valid? context (:elements-model model)) data))
-               (implies (contains? model :condition-model)
-                        (valid? context (:condition-model model) data)))
-     :map (and (map? data)
-               (implies (contains? model :entries)
-                        (every? (fn [entry]
-                                  (if (contains? data (:key entry))
-                                    (valid? context (:model entry) (get data (:key entry)))
-                                    (:optional entry)))
-                                (:entries model)))
-               (implies (contains? model :keys)
-                        (every? (partial valid? context (-> model :keys :model)) (keys data)))
-               (implies (contains? model :values)
-                        (every? (partial valid? context (-> model :values :model)) (vals data)))
-               (implies (contains? model :condition-model)
-                        (valid? context (:condition-model model) data)))
-     :sequence (and (sequential? data)
-                    ((-> (:coll-type model :any) {:any any?
-                                                  :list list?
-                                                  :vector vector?}) data)
-                    (implies (contains? model :entries)
-                             (and (= (count (:entries model)) (count data))
-                                  (every? true? (map (fn [entry data-element]
-                                                       (valid? context (:model entry) data-element))
-                                                     (:entries model)
-                                                     data))))
-                    (implies (contains? model :count-model)
-                             (valid? context (:count-model model) (count data)))
-                    (implies (contains? model :elements-model)
-                             (every? (partial valid? context (:elements-model model)) data))
-                    (implies (contains? model :condition-model)
-                             (valid? context (:condition-model model) data)))
-     (:cat :repeat) (and (sequential? data)
-                         ((-> (:coll-type model :any) {:any any?
-                                                       :list list?
-                                                       :vector vector?}) data)
-                         (some nil? (left-overs context model (seq data)))
-                         (implies (contains? model :count-model)
-                                  (valid? context (:count-model model) (count data)))
-                         (implies (contains? model :condition-model)
-                                  (valid? context (:condition-model model) data)))
-     :let (valid? (merge context (:bindings model)) (:body model) data)
-     :ref (valid? context (get context (:key model)) data))))
+   (boolean (-valid? context model data))))
 
 (defn explain
   "Returns a structure describing what parts of the data are not matching the model."
   [model data])
-
-;; There are 2 kinds of predicates:
-;; - structural (they test the existence of a structure),
-;; - logical (they test properties on values and lead to booleans, they are not used to describe their structure).
-
-;; Structural predicates can be predefined extensively:
-;; [:set :map :sequence :alt :cat :repeat]
-
-;; Logical predicates are everything else, for instance:
-;; [:fn :enum :and :or]
-
-;; Re-design of the :or and :alt :
-;;   - :or is only for non-structural tests, (e.g. [:or even? prime?])
-;;   - :alt is used for any kind of branching, structural or logical.
 
 (defn describe
   "Returns a descriptions of the data's structure using a hierarchy of hash-maps."
@@ -312,10 +318,6 @@
 ;; TODO: Treat the attributes independently of the type of the node in which they appear.
 ;;       That's a kind of composition pattern a-la-unity.
 
-;; TODO: Check the validity of the model's structure via .. a model :-)
-;;       We need a model of the hash-map based models to guide the user
-;;       and avoid having him/her losing hairs.
-
 (defn undescribe
   "Returns a data which matches a description."
   [model description])
@@ -323,11 +325,6 @@
 ;;---
 
 (comment
-  ;; Not in the core, not urgent.
-  (defn generate
-    "Returns a data generated by a generator, in the shape represented by the model."
-    [model generator])
-
   ;; Not in the core, not urgent.
   (defn visit [model travel-plan data])
 

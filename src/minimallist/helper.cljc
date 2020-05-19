@@ -27,19 +27,19 @@
 
 ;; For :map
 (defn with-entries [map-model entries]
-   (assoc map-model
-     :entries (into (:entries map-model [])
-                    (cl/map -entry)
-                    entries)))
+  (assoc map-model
+    :entries (into (:entries map-model [])
+                   (cl/map -entry)
+                   entries)))
 
 ;; For :map
 (defn with-optional-entries [map-model entries]
-   (assoc map-model
-     :entries (into (:entries map-model [])
-                    (cl/map (cl/fn [entry]
-                              (-> (-entry entry)
-                                  (assoc :optional true))))
-                    entries)))
+  (assoc map-model
+    :entries (into (:entries map-model [])
+                   (cl/map (cl/fn [entry]
+                             (-> (-entry entry)
+                                 (assoc :optional true))))
+                   entries)))
 
 ;; For :map
 (defn with-keys [map-model keys-model]
