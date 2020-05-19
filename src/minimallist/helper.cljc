@@ -26,14 +26,14 @@
   (assoc collection-model :count-model count-model))
 
 ;; For :map
-(defn with-entries [map-model entries]
+(defn with-entries [map-model & entries]
   (assoc map-model
     :entries (into (:entries map-model [])
                    (cl/map -entry)
                    entries)))
 
 ;; For :map
-(defn with-optional-entries [map-model entries]
+(defn with-optional-entries [map-model & entries]
   (assoc map-model
     :entries (into (:entries map-model [])
                    (cl/map (cl/fn [entry]
@@ -99,7 +99,7 @@
   ([]
    {:type :map})
   ([& entries]
-   (-> (map) (with-entries entries))))
+   (apply with-entries (map) entries)))
 
 (defn map-of [keys-model values-model]
   (-> {:type :map-of} (with-keys keys-model) (with-values values-model)))
