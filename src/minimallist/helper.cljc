@@ -68,9 +68,13 @@
 
 ;; the main functions
 
-(defn fn [predicate]
-  {:type :fn
-   :fn predicate})
+(defn fn
+  ([predicate]
+   (fn {} predicate))
+  ([options predicate]
+   (assoc options
+     :type :fn
+     :fn predicate)))
 
 (defn enum [values-set]
   {:type :enum
