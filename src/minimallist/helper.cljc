@@ -150,7 +150,7 @@
 (defn + [model]
   (repeat 1 ##Inf model))
 
-(defn let [bindings body]
+(defn let [[& {:as bindings}] body]
   {:type :let
    :bindings bindings
    :body body})
