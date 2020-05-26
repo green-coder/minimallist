@@ -53,6 +53,10 @@
 (defn with-condition [collection-model condition-model]
   (assoc collection-model :condition-model condition-model))
 
+;; For any node, mostly for :fn
+(defn with-test-check-gen [model generator]
+  (assoc model :test.check/generator generator))
+
 ;; For :sequence-of, :sequence, :cat and :repeat
 (defn in-vector [sequence-model]
   (assoc sequence-model :coll-type :vector))

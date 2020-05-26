@@ -2,8 +2,6 @@
   (:require [minimallist.core :refer [valid?]]
             [clojure.test.check.generators :as gen]))
 
-;; TODO: Replace the :enum node by a :fn node?
-
 ;; TODO: What if ... conditions could only exist as something else's :condition-model?
 ;;       conditions would then only be used for validity testing, not generation.
 ;; TODO: add :condition-model to :fn nodes and maybe others (all of them?)
@@ -15,7 +13,7 @@
   [context model]
   (if (and (#{:alt :cat :repeat :let :ref} (:type model))
            (:inlined model true))
-    (or (:generator model)
+    (or (:test.check/generator model)
         (case (:type model)
           :alt (gen/let [entry (gen/elements (:entries model))]
                  (sequence-generator context (:model entry)))
@@ -36,9 +34,11 @@
   ([model]
    (generator {} model))
   ([context model]
-   (or (:generator model)
+   (or (:test.check/generator model)
        (case (:type model)
+
          ;:fn gen/any
+
          :enum (gen/elements (:values model))
 
          ;; will not be needed here
@@ -50,9 +50,11 @@
          ;                                                     (valid? context (:model entry) x))
          ;                                                   (next entries)))))))
          (:fn :and :or) nil ;; a generator is supposed to be provided for those nodes
+
          :alt (let [entries (:entries model)]
                 (gen/let [index (gen/choose 0 (dec (count entries)))]
                   (generator context (:model (entries index)))))
+
          (:set-of :set) (let [element-generator (if (contains? model :elements-model)
                                                   (generator context (:elements-model model))
                                                   gen/any)]
@@ -62,6 +64,7 @@
                                                  (gen/set element-generator {:num-elements num-elements})))
                                      (gen/set element-generator))
                             (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model)))))
+
          (:map-of :map) (cond->> (if (contains? model :entries)
                                    (gen/bind (gen/vector gen/boolean (count (:entries model)))
                                              (fn [random-bools]
@@ -96,9 +99,9 @@
                                                              inside-list? (gen/fmap (partial apply list)))))))
                                     (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model))))
 
+         ;; TODO: enforce :count-model when specified
          (:cat :repeat) (cond->> (gen/bind gen/boolean
                                            (fn [random-bool]
-                                             ;; ignore :count-model for now
                                              (let [gen (sequence-generator context model)]
                                                (let [inside-list? (case (:coll-type model)
                                                                     :list true
@@ -108,23 +111,10 @@
                                                    inside-list? (gen/fmap (partial apply list)))))))
                                  (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model))))
 
-         ;(:cat :repeat) (and (sequential? data)
-         ;                    ((-> (:coll-type model :any) {:any any?
-         ;                                                  :list list?
-         ;                                                  :vector vector?}) data)
-         ;                    (some nil? (left-overs context model (seq data)))
-         ;                    (implies (contains? model :count-model)
-         ;                             (valid? context (:count-model model) (count data)))
-         ;                    (implies (contains? model :condition-model)
-         ;                             (valid? context (:condition-model model) data)))
-
          :let (generator (merge context (:bindings model)) (:body model))
 
          ;; scary possible infinite recursion problems
-         :ref (generator context (get context (:key model)))
-
-         nil))))
-
+         :ref (generator context (get context (:key model)))))))
 
 (comment
   ;; 
