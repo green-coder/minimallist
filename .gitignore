@@ -4,7 +4,6 @@
 /out
 profiles.clj
 pom.xml.asc
-package-lock.json
 *.jar
 *.class
 /.lein-*

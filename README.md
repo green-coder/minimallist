@@ -1,3 +1,6 @@
+[![Clojars Project](https://img.shields.io/clojars/v/minimallist.svg)](https://clojars.org/minimallist)
+[![CircleCI](https://circleci.com/gh/green-coder/minimallist.svg?style=svg)](https://circleci.com/gh/green-coder/minimallist)
+
 ## Minimallist
 
 A minimalist data driven data model library, inspired by [Clojure Spec](https://clojure.org/guides/spec) and [Malli](https://github.com/metosin/malli).
@@ -36,6 +39,7 @@ A minimalist data driven data model library, inspired by [Clojure Spec](https://
 
 (valid? hiccup-model [:div {:class [:foo :bar]}
                       [:p "Hello, world of data"]])
+;=> true
 ```
 
 See the [tests](test/) for more examples of how to use the helpers to build your models.
