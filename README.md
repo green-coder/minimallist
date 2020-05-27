@@ -1,4 +1,5 @@
 [![Clojars Project](https://img.shields.io/clojars/v/minimallist.svg)](https://clojars.org/minimallist)
+[![cljdoc badge](https://cljdoc.org/badge/minimallist/minimallist)](https://cljdoc.org/d/minimallist/minimallist/CURRENT)
 [![CircleCI](https://circleci.com/gh/green-coder/minimallist.svg?style=svg)](https://circleci.com/gh/green-coder/minimallist)
 
 ## Minimallist
