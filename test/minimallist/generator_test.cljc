@@ -116,4 +116,19 @@
       (is (every? (partial valid? model)
                   (gen/sample (generator model)))))))
 
-;; TODO: limit the size of recursive models
+    ;;; TODO: limit the size of recursive models
+    ;
+    ;;; Budget-based limit on model choice.
+    ;(let [model (h/let ['tree (h/alt [:leaf fn-int?]
+    ;                                 [:branch (h/vector (h/ref 'tree)
+    ;                                                    (h/ref 'tree))])]
+    ;
+    ;              (h/ref 'tree))]
+    ;  (is (every? (partial valid? model)
+    ;              (gen/sample (generator model)))))
+    ;
+    ;;; Budget-based limit on variable collection size.
+    ;(let [model (h/let ['node (h/vector-of (h/ref 'node))]
+    ;              (h/ref 'node))]
+    ;  (is (every? (partial valid? model)
+    ;              (gen/sample (generator model)))))))

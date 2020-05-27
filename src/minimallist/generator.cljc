@@ -99,19 +99,11 @@
 
          :enum (gen/elements (:values model))
 
-         ;; will not be needed here
-         ;:and (let [entries (:entries model)]
-         ;       (when (seq entries)
-         ;         (cond->> (generator context (:model (first entries)))
-         ;           (next entries) (gen/such-that (fn [x]
-         ;                                           (every? (fn [entry]
-         ;                                                     (valid? context (:model entry) x))
-         ;                                                   (next entries)))))))
-         :and nil ;; a generator is supposed to be provided for those nodes
+         (:and :or) nil ;; a generator is supposed to be provided for those nodes
 
-         (:or :alt) (let [entries (:entries model)]
-                      (gen/let [index (gen/choose 0 (dec (count entries)))]
-                        (generator context (:model (entries index)))))
+         :alt (let [entries (:entries model)]
+                (gen/let [index (gen/choose 0 (dec (count entries)))]
+                  (generator context (:model (entries index)))))
 
          (:set-of :set) (let [element-generator (if (contains? model :elements-model)
                                                   (generator context (:elements-model model))
