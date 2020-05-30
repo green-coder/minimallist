@@ -74,7 +74,9 @@
 
 (defn- -valid? [context model data]
   (case (:type model)
-    :fn ((:fn model) data)
+    :fn (and ((:fn model) data)
+             (implies (contains? model :condition-model)
+                      (-valid? context (:condition-model model) data)))
     :enum (contains? (:values model) data)
     :and (every? (fn [entry]
                    (-valid? context (:model entry) data))
@@ -108,10 +110,10 @@
                                                                 :vector vector?}) data)
                                   (implies (contains? model :entries)
                                            (and (= (count (:entries model)) (count data))
-                                                (every? true? (map (fn [entry data-element]
-                                                                     (-valid? context (:model entry) data-element))
-                                                                   (:entries model)
-                                                                   data))))
+                                                (every? identity (map (fn [entry data-element]
+                                                                        (-valid? context (:model entry) data-element))
+                                                                      (:entries model)
+                                                                      data))))
                                   (implies (contains? model :count-model)
                                            (-valid? context (:count-model model) (count data)))
                                   (implies (contains? model :elements-model)
