@@ -132,3 +132,27 @@
     ;              (h/ref 'node))]
     ;  (is (every? (partial valid? model)
     ;              (gen/sample (generator model)))))))
+
+
+(defn -with-leaf-distance [context model]
+  (case (:type model)
+    (:fn :enum
+      :and :or) (assoc model :leaf-distance 0)
+    ;:set-of :set
+    ;:map-of :map
+    ;:sequence-of
+    :sequence (let [entries (mapv (fn [entry]
+                                    (assoc entry
+                                      :model (-with-leaf-distance context (:model entry))))
+                                 (:entries model))]
+                (assoc model
+                  :entries entries
+                  :leaf-distance (inc (apply min (mapv (comp :leaf-distance :model) entries)))))))
+    ;:alt
+    ;;:cat :repeat
+    ;:let
+    ;:ref))
+
+(-with-leaf-distance {}
+                     (h/tuple (h/fn int?)
+                              (h/tuple (h/fn int?))))
