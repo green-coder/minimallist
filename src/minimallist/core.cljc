@@ -65,7 +65,7 @@
                    (take (inc (:max model))) ; inc because it includes the "match zero times"
                    (drop (:min model))
                    (apply concat))
-      :let (left-overs (merge context (:bindings model)) (:body model) seq-data)
+      :let (left-overs (into context (:bindings model)) (:body model) seq-data)
       :ref (left-overs context (get context (:key model)) seq-data))
     (if (and seq-data
              (-valid? context (dissoc model :inlined) (first seq-data)))
@@ -129,7 +129,7 @@
                                  (-valid? context (:count-model model) (count data)))
                         (implies (contains? model :condition-model)
                                  (-valid? context (:condition-model model) data)))
-    :let (-valid? (merge context (:bindings model)) (:body model) data)
+    :let (-valid? (into context (:bindings model)) (:body model) data)
     :ref (-valid? context (get context (:key model)) data)))
 
 
@@ -184,7 +184,7 @@
                    (drop (:min model))
                    (reverse) ; longest repetitions first
                    (apply concat))
-      :let (sequence-descriptions (merge context (:bindings model)) (:body model) seq-data)
+      :let (sequence-descriptions (into context (:bindings model)) (:body model) seq-data)
       :ref (sequence-descriptions context (get context (:key model)) seq-data))
     (if seq-data
       (let [description (describe context (dissoc model :inlined) (first seq-data))]
@@ -311,7 +311,7 @@
                                                 (:valid? (describe context (:condition-model model) data)))}
                               {:valid? false}))
                           {:valid? false})
-         :let (describe (merge context (:bindings model)) (:body model) data)
+         :let (describe (into context (:bindings model)) (:body model) data)
          :ref (describe context (get context (:key model)) data))
        (assoc :context context ;; maybe: (post-fn description context model data)
               :model model

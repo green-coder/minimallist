@@ -158,9 +158,9 @@
 (defn + [model]
   (repeat 1 ##Inf model))
 
-(defn let [[& {:as bindings}] body]
+(defn let [bindings body]
   {:type :let
-   :bindings bindings
+   :bindings (into [] (partition-all 2) bindings)
    :body body})
 
 (defn ref [key]
