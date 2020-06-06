@@ -160,7 +160,7 @@
 
 (defn let [bindings body]
   {:type :let
-   :bindings (apply sorted-map bindings)
+   :bindings (apply hash-map bindings)
    :body body})
 
 (defn ref [key]
