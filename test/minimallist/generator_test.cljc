@@ -235,19 +235,24 @@
     (fn [model stack path]
       (swap! counter inc)
       (prn path)
-      (-> model (assoc :visited @counter)))))
-  ;(case (:type model)
-  ;  (:fn :enum
-  ;    :and :or) (assoc model :leaf-distance 0)
-  ;  ;:set-of :set
-  ;  ;:map-of :map
-  ;  ;:sequence-of
-  ;  :sequence (let [distances (->> (:entries model)
-  ;                                 (mapv (comp :leaf-distance :model))
-  ;                                 (filter some?))]
-  ;              (cond-> model
-  ;                (seq distances) (assoc :leaf-distance (inc (apply min distances)))))))
-  ;  :alt
-  ;  ;:cat :repeat
-  ;  :let
-  ;  :ref))
+      ;(-> model (assoc :visited @counter)))))
+      (case (:type model)
+        (:fn :enum) (assoc model :leaf-distance 0)
+        ;:set-of :set
+        ;:map-of :map
+        ;:sequence-of :repeat
+        (:and :or
+         :alt :cat
+         :sequence) (let [distances (->> (:entries model)
+                                         (mapv (comp :leaf-distance :model))
+                                         (filter some?))]
+                      (cond-> model
+                        (seq distances) (assoc :leaf-distance (inc (apply min distances)))))
+        :let (let [body-distance (:leaf-distance (:body model))]
+               (cond-> model
+                 (some? body-distance) (assoc :leaf-distance (inc body-distance))))
+        :ref (let [key (:key model)
+                   index (find-stack-index stack key)
+                   binding-distance (get-in stack [index :bindings key :leaf-distance])]
+               (cond-> model
+                 (some? binding-distance) (assoc :leaf-distance (inc binding-distance))))))))
