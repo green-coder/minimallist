@@ -64,8 +64,9 @@
                                                               [:condition-model (h/ref 'model)])
                                      (h/with-condition (h/fn #(<= (:min %) (:max %)))))]
                         [:let (h/map [:type (h/val :let)]
-                                     [:bindings (h/in-vector (h/+ (h/cat (h/fn any?)
-                                                                         (h/ref 'model))))]
+                                     [:bindings (-> (h/map-of (h/fn any?)
+                                                              (h/ref 'model))
+                                                    (h/with-condition (h/fn sorted?)))] ;; TODO: add [:sorted true] to the model
                                      [:body (h/ref 'model)])]
                         [:ref (h/map [:type (h/val :ref)])])]
          (h/ref 'model)))
