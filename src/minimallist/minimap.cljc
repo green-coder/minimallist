@@ -67,7 +67,8 @@
                                      [:bindings (h/map-of (h/fn any?)
                                                           (h/ref 'model))]
                                      [:body (h/ref 'model)])]
-                        [:ref (h/map [:type (h/val :ref)])])]
+                        [:ref (h/map [:type (h/val :ref)]
+                                     [:key (h/fn any?)])])]
          (h/ref 'model)))
 
 (comment
