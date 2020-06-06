@@ -134,25 +134,67 @@
     ;              (gen/sample (generator model)))))))
 
 
-(defn -with-leaf-distance [context model]
+(defn post-walk [model visitor context path]
   (case (:type model)
     (:fn :enum
-      :and :or) (assoc model :leaf-distance 0)
-    ;:set-of :set
-    ;:map-of :map
-    ;:sequence-of
-    :sequence (let [entries (mapv (fn [entry]
-                                    (assoc entry
-                                      :model (-with-leaf-distance context (:model entry))))
-                                 (:entries model))]
-                (assoc model
-                  :entries entries
-                  :leaf-distance (inc (apply min (mapv (comp :leaf-distance :model) entries)))))))
+     :set) (visitor model context path)
+    (:and :or) (visitor model context path) ;; TODO as :sequence
+    (:set-of
+     :sequence-of) (let [walked-model (update model :elements-model
+                                              post-walk visitor context (conj path :elements-model))]
+                     (visitor walked-model context path))
+    :map-of (let [walked-model (-> model
+                                   (update-in [:keys :model]
+                                              post-walk visitor context (conj path :keys :model))
+                                   (update-in [:values :model]
+                                              post-walk visitor context (conj path :values :model)))]
+              (visitor walked-model context path))
+    (:map
+     :sequence) (let [walked-model (cond-> model
+                                     (contains? model :entries)
+                                     (update :entries
+                                             (partial into []
+                                                      (map-indexed (fn [index entry]
+                                                                     (update entry :model
+                                                                             post-walk visitor context (conj path :entries index :model)))))))]
+                  (visitor walked-model context path))
+    ;:alt
+    ;;:cat :repeat
+    :let (let [walked-model (-> model
+                                (update :bindings
+                                        (partial into {}
+                                                 (map (fn [[key model]]
+                                                        [key (post-walk model visitor context (conj path :bindings key))]))))
+                                (update :body post-walk visitor context (conj path :body)))]
+           (visitor walked-model context path))
+    :ref (let [walked-model model #_(post-walk (get context (:key model))
+                                               visitor context (conj path :key))
+               updated-context context #_(assoc context (:key model) walked-model)]
+           (visitor walked-model updated-context path))))
+
+(defn -with-leaf-distance [model context path]
+  (prn path)
+  model)
+  ;(case (:type model)
+  ;  (:fn :enum
+  ;    :and :or) (assoc model :leaf-distance 0)
+  ;  ;:set-of :set
+  ;  ;:map-of :map
+  ;  ;:sequence-of
+  ;  :sequence (let [distances (->> (:entries model)
+  ;                                 (mapv (comp :leaf-distance :model))
+  ;                                 (filter some?))]
+  ;              (cond-> model
+  ;                (seq distances) (assoc :leaf-distance (inc (apply min distances)))))))
     ;:alt
     ;;:cat :repeat
     ;:let
     ;:ref))
 
-(-with-leaf-distance {}
-                     (h/tuple (h/fn int?)
-                              (h/tuple (h/fn int?))))
+#_(post-walk (h/let ['leaf (h/fn int?)
+                     'tree (h/tuple (h/fn int?)
+                                    (h/ref 'leaf))]
+               (h/ref 'tree))
+             -with-leaf-distance
+             {}
+             [])
