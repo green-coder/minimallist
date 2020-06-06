@@ -133,60 +133,91 @@
     ;  (is (every? (partial valid? model)
     ;              (gen/sample (generator model)))))))
 
+(defn- find-stack-index [stack key]
+  (loop [index (dec (count stack))
+         elements (rseq stack)]
+    (when elements
+      (let [elm (first elements)]
+        (if (contains? (:bindings elm) key)
+          index
+          (recur (dec index) (next elements)))))))
 
 (defn post-walk [model visitor]
-  (let [-walk (fn -walk [model context path]
-                (case (:type model)
-                  (:fn :enum
-                   :set) {:bindings context
-                          :model (visitor model context path)}
-                  (:and :or) (visitor model context path) ;; TODO as :sequence
-                  (:set-of
-                   :sequence-of) (let [walked-model (update model :elements-model
-                                                            -walk context (conj path :elements-model))]
-                                   (visitor walked-model context path))
-                  :map-of (let [walked-model (-> model
-                                                 (update-in [:keys :model]
-                                                            -walk context (conj path :keys :model))
-                                                 (update-in [:values :model]
-                                                            -walk context (conj path :values :model)))]
-                            (visitor walked-model context path))
-                  (:map
-                   :sequence) (let [walked-model (cond-> model
-                                                   (contains? model :entries)
-                                                   (update :entries
-                                                           (partial into []
-                                                                    (map-indexed (fn [index entry]
-                                                                                   (update entry :model
-                                                                                           -walk context (conj path :entries index :model)))))))]
-                                (visitor walked-model context path))
-                  ;:alt
-                  ;;:cat :repeat
+  (let [-walk (fn -walk [model stack path]
+                (let [[model stack]
+                      (case (:type model)
+                        (:fn :enum :set) [model stack]
+                        (:and :or) [model stack] ;; TODO as :sequence
+                        (:set-of :sequence-of) (let [[model' stack'] (-walk (:elements-model model)
+                                                                            stack
+                                                                            (conj path :elements-model))]
+                                                 [(assoc model :elements-model model') stack'])
+                        :map-of (let [[model' stack'] (-walk (-> model :keys :model) stack (conj path :keys :model))
+                                      [model'' stack''] (-walk (-> model' :values :model) stack' (conj path :values :model))]
+                                  [(-> model
+                                       (assoc-in [:keys :model] model')
+                                       (assoc-in [:values :model] model'')) stack''])
+                        (:map :sequence) (if (contains? model :entries)
+                                           (let [[walked-entries stack'] (reduce (fn [[walked-entries stack] [index entry]]
+                                                                                   (let [[walked-entry-model stack'] (-walk (:model entry) stack (conj path :entries index :model))]
+                                                                                     [(conj walked-entries (assoc entry :model walked-entry-model)) stack']))
+                                                                                 [[] stack]
+                                                                                 (map-indexed vector (:entries model)))]
+                                             [(assoc model :entries walked-entries) stack'])
+                                           [model stack])
+                        ;:alt
+                        ;;:cat :repeat
 
-                  ;; TODO: fix for multi-level :let
-                  :let (let [{bindings :bindings
-                              walked-body :model} (-walk (:body model) (:bindings model) (conj path :body))
-                             walked-model (assoc model
-                                            :bindings bindings
-                                            :body walked-body)]
-                         {:bindings context
-                          :model (visitor walked-model context path)})
-                  :ref (let [key (:key model)
-                             {bindings :bindings
-                              walked-model :model} (-walk (get context key) context (conj path key))
-                             updated-context (assoc bindings key walked-model)]
-                         {:bindings updated-context
-                          :model (visitor model updated-context path)})))]
-    (:model (-walk model (sorted-map) []))))
+                        :let (let [[walked-body stack'] (-walk (:body model)
+                                                               (conj stack {:bindings (:bindings model)
+                                                                            :path (conj path :bindings)})
+                                                               (conj path :body))]
+                               [(assoc model
+                                  :bindings (:bindings (peek stack'))
+                                  :body walked-body) (pop stack')])
+                        :ref (let [key (:key model)
+                                   index (find-stack-index stack key)
+                                   [walked-ref-model stack'] (-walk (get-in stack [index :bindings key])
+                                                                    (subvec stack 0 (inc index))
+                                                                    (conj (get-in stack [index :path]) key))]
+                               [model (-> stack'
+                                          (assoc-in [index :bindings key] walked-ref-model)
+                                          (into (subvec stack (inc index))))]))]
+                  [(visitor model stack path) stack]))]
+    (first (-walk model [] []))))
 
 #_(post-walk (h/let ['leaf (h/fn int?)
                      'tree (h/ref 'leaf)]
                     (h/ref 'tree))
              (-with-leaf-distance))
 
+#_(post-walk (h/let ['root (h/let ['leaf (h/fn int?)
+                                   'tree (h/ref 'leaf)]
+                                  (h/ref 'tree))]
+                    (h/ref 'root))
+             (-with-leaf-distance))
+
+#_(post-walk (h/let ['leaf (h/fn int?)
+                     'root (h/let ['tree (h/ref 'leaf)]
+                                  (h/ref 'tree))]
+                    (h/ref 'root))
+             (-with-leaf-distance))
+
+; test of no visit more than once
+#_(post-walk (h/let ['leaf (h/fn int?)
+                     'tree (h/tuple (h/ref 'leaf) (h/ref 'leaf))]
+                    (h/ref 'tree))
+             (-with-leaf-distance))
+
+; test of no visit more than once, infinite loop otherwise
+#_(post-walk (h/let ['leaf (h/fn int?)
+                     'tree (h/tuple (h/ref 'tree) (h/ref 'leaf))]
+                    (h/ref 'tree))
+             (-with-leaf-distance))
+
 (defn -with-leaf-distance []
   (let [counter (atom -1)]
-    (fn [model context path]
+    (fn [model stack path]
       (swap! counter inc)
       (prn path)
       (-> model (assoc :visited @counter)))))
