@@ -142,6 +142,44 @@
           index
           (recur (dec index) (next elements)))))))
 
+(defn reduce-update [[data acc] key f & args]
+  (let [elm (get data key)
+        [updated-elm updated-acc] (apply f elm acc args)
+        updated-data (assoc data key updated-elm)]
+    [updated-data updated-acc]))
+
+(defn reduce-update-in [[data acc] path f & args]
+  (let [elm (get-in data path)
+        [updated-elm updated-acc] (apply f elm acc args)
+        updated-data (assoc-in data path updated-elm)]
+    [updated-data updated-acc]))
+
+#_(let [m {:a {:x 1, :y 2}
+           :b [3 4 5]}
+        f (fn [elm acc]
+            (let [elm10 (* elm 10)]
+              [elm10 (conj acc elm10)]))]
+    (-> [m []]
+        (reduce-update-in [:a :x] f)
+        (reduce-update-in [:b 2] f)))
+; => [{:a {:x 10, :y 2}, :b [3 4 50]} [10 50]]
+
+(defn reduce-mapv [f coll acc]
+  (reduce (fn [[v acc] elm]
+            (let [[updated-elm updated-acc] (f elm acc)]
+              [(conj v updated-elm) updated-acc]))
+          [[] acc]
+          coll))
+
+#_(let [m {:a {:x 1, :y 2}
+           :b [3 4 5]}
+        f (fn [elm acc]
+            (let [elm10 (* elm 10)]
+              [elm10 (conj acc elm10)]))]
+    (reduce-update [m []] :b (partial reduce-mapv f)))
+;=> [{:a {:x 1, :y 2}, :b [30 40 50]} [30 40 50]]
+
+
 (defn postwalk [model visitor]
   (let [walk (fn walk [model stack walked-bindings path]
                (let [[model stack walked-bindings]
