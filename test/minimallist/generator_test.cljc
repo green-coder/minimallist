@@ -142,103 +142,88 @@
           index
           (recur (dec index) (next elements)))))))
 
-(defn reduce-update [[data acc] key f & args]
+(defn reduce-update [[acc data] key f & args]
   (let [elm (get data key)
-        [updated-elm updated-acc] (apply f elm acc args)
+        [updated-acc updated-elm] (apply f acc elm args)
         updated-data (assoc data key updated-elm)]
-    [updated-data updated-acc]))
+    [updated-acc updated-data]))
 
-(defn reduce-update-in [[data acc] path f & args]
+(defn reduce-update-in [[acc data] path f & args]
   (let [elm (get-in data path)
-        [updated-elm updated-acc] (apply f elm acc args)
+        [updated-acc updated-elm] (apply f acc elm args)
         updated-data (assoc-in data path updated-elm)]
-    [updated-data updated-acc]))
+    [updated-acc updated-data]))
 
 #_(let [m {:a {:x 1, :y 2}
            :b [3 4 5]}
-        f (fn [elm acc]
+        f (fn [acc elm]
             (let [elm10 (* elm 10)]
-              [elm10 (conj acc elm10)]))]
-    (-> [m []]
+              [(conj acc elm10) elm10]))]
+    (-> [[] m]
         (reduce-update-in [:a :x] f)
         (reduce-update-in [:b 2] f)))
 ; => [{:a {:x 10, :y 2}, :b [3 4 50]} [10 50]]
 
-(defn reduce-mapv [f coll acc]
-  (reduce (fn [[v acc] elm]
-            (let [[updated-elm updated-acc] (f elm acc)]
-              [(conj v updated-elm) updated-acc]))
-          [[] acc]
+(defn reduce-mapv [f acc coll]
+  (reduce (fn [[acc v] elm]
+            (let [[updated-acc updated-elm] (f acc elm)]
+              [updated-acc (conj v updated-elm)]))
+          [acc []]
           coll))
 
 #_(let [m {:a {:x 1, :y 2}
            :b [3 4 5]}
-        f (fn [elm acc]
+        f (fn [acc elm]
             (let [elm10 (* elm 10)]
-              [elm10 (conj acc elm10)]))]
-    (reduce-update [m []] :b (partial reduce-mapv f)))
+              [(conj acc elm10) elm10]))]
+    (reduce-update [[] m] :b (partial reduce-mapv f)))
 ;=> [{:a {:x 1, :y 2}, :b [30 40 50]} [30 40 50]]
 
 
 (defn postwalk [model visitor]
-  (let [walk (fn walk [model [stack walked-bindings] path]
-               (let [[model [stack walked-bindings]]
+  (let [walk (fn walk [[stack walked-bindings] model path]
+               (let [[[stack walked-bindings] model]
                      (case (:type model)
                        (:fn :enum
-                        :set) [model [stack walked-bindings]]
+                        :set) [[stack walked-bindings] model]
                        (:set-of :sequence-of
-                        :repeat) (let [[model' [stack' walked-bindings']] (walk (:elements-model model)
-                                                                                [stack
-                                                                                 walked-bindings]
-                                                                                (conj path :elements-model))]
-                                   [(assoc model :elements-model model') [stack' walked-bindings']])
-                       :map-of (let [[model' [stack' walked-bindings']] (walk (-> model :keys :model)
-                                                                              [stack
-                                                                               walked-bindings]
-                                                                              (conj path :keys :model))
-                                     [model'' [stack'' walked-bindings'']] (walk (-> model' :values :model)
-                                                                                 [stack'
-                                                                                  walked-bindings']
-                                                                                 (conj path :values :model))]
-                                 [(-> model
-                                      (assoc-in [:keys :model] model')
-                                      (assoc-in [:values :model] model'')) [stack'' walked-bindings'']])
+                        :repeat) (-> [[stack walked-bindings] model]
+                                     (reduce-update :elements-model walk (conj path :elements-model)))
+                       :map-of (-> [[stack walked-bindings] model]
+                                   (reduce-update-in [:keys :model] walk (conj path :keys :model))
+                                   (reduce-update-in [:values :model] walk (conj path :values :model)))
                        (:and :or
                         :map :sequence
-                        :alt :cat) (if (contains? model :entries)
-                                     (let [[walked-entries [stack' walked-bindings']]
-                                           (reduce (fn [[walked-entries [stack walked-bindings]] [index entry]]
-                                                     (let [[walked-entry-model [stack' walked-bindings']] (walk (:model entry)
-                                                                                                                [stack
-                                                                                                                 walked-bindings]
-                                                                                                                (conj path :entries index :model))]
-                                                       [(conj walked-entries (assoc entry :model walked-entry-model)) [stack' walked-bindings']]))
-                                                   [[] [stack walked-bindings]]
-                                                   (map-indexed vector (:entries model)))]
-                                       [(assoc model :entries walked-entries) [stack' walked-bindings']])
-                                     [model [stack walked-bindings]])
-                       :let (let [[walked-body [stack' walked-bindings']] (walk (:body model)
-                                                                                [(conj stack {:bindings (:bindings model)
-                                                                                               :path (conj path :bindings)})
+                        :alt :cat) (cond-> [[stack walked-bindings] model]
+                                     (contains? model :entries)
+                                     (reduce-update :entries (fn [[stack walked-bindings] entries]
+                                                               (reduce-mapv (fn [[stack walked-bindings] [index entry]]
+                                                                              (reduce-update [[stack walked-bindings] entry] :model
+                                                                                             walk (conj path :entries index :model)))
+                                                                            [stack walked-bindings]
+                                                                            (map-indexed vector entries)))))
+                       :let (let [[[stack' walked-bindings'] walked-body] (walk [(conj stack {:bindings (:bindings model)
+                                                                                              :path (conj path :bindings)})
                                                                                  walked-bindings]
+                                                                                (:body model)
                                                                                 (conj path :body))]
-                              [(assoc model
-                                 :bindings (:bindings (peek stack'))
-                                 :body walked-body) [(pop stack') walked-bindings']])
+                              [[(pop stack') walked-bindings'] (assoc model
+                                                                 :bindings (:bindings (peek stack'))
+                                                                 :body walked-body)])
                        :ref (let [key (:key model)
                                   index (find-stack-index stack key)
                                   binding-path (conj (get-in stack [index :path]) key)]
                               (if (contains? walked-bindings binding-path)
-                                [model [stack walked-bindings]]
-                                (let [[walked-ref-model [stack' walked-bindings']] (walk (get-in stack [index :bindings key])
-                                                                                         [(subvec stack 0 (inc index))
+                                [[stack walked-bindings] model]
+                                (let [[[stack' walked-bindings'] walked-ref-model] (walk [(subvec stack 0 (inc index))
                                                                                           (conj walked-bindings binding-path)]
+                                                                                         (get-in stack [index :bindings key])
                                                                                          binding-path)]
-                                  [model [(-> stack'
-                                              (assoc-in [index :bindings key] walked-ref-model)
-                                              (into (subvec stack (inc index)))) walked-bindings']]))))]
-                 [(visitor model stack path) [stack walked-bindings]]))]
-    (first (walk model [[] #{}] []))))
+                                  [[(-> stack'
+                                        (assoc-in [index :bindings key] walked-ref-model)
+                                        (into (subvec stack (inc index)))) walked-bindings'] model]))))]
+                 [[stack walked-bindings] (visitor model stack path)]))]
+    (second (walk [[] #{}] model []))))
 
 #_(postwalk (h/let ['leaf (h/fn int?)
                     'tree (h/ref 'leaf)]
