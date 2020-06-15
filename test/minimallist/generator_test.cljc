@@ -180,6 +180,7 @@
 ;=> [{:a {:x 1, :y 2}, :b [30 40 50]} [30 40 50]]
 
 
+;; TODO: walk on :count-model and :condition-model nodes
 (defn postwalk [model visitor]
   (let [walk (fn walk [[stack walked-bindings] model path]
                (let [[[stack walked-bindings] model]
@@ -225,58 +226,96 @@
                  [[stack walked-bindings] (visitor model stack path)]))]
     (second (walk [[] #{}] model []))))
 
+(defn -with-visit-order []
+  (let [counter (atom -1)]
+    (fn [model stack path]
+      (swap! counter inc)
+      (prn path)
+      (-> model (assoc :visit-order @counter)))))
+
 #_(postwalk (h/let ['leaf (h/fn int?)
                     'tree (h/ref 'leaf)]
                    (h/ref 'tree))
-            (-with-leaf-distance))
+            (-with-visit-order))
 
 #_(postwalk (h/let ['root (h/let ['leaf (h/fn int?)
                                   'tree (h/ref 'leaf)]
                                  (h/ref 'tree))]
                    (h/ref 'root))
-            (-with-leaf-distance))
+            (-with-visit-order))
 
 #_(postwalk (h/let ['leaf (h/fn int?)
                     'root (h/let ['tree (h/ref 'leaf)]
                                  (h/ref 'tree))]
                    (h/ref 'root))
-            (-with-leaf-distance))
+            (-with-visit-order))
 
 ; test of no visit more than once
 #_(postwalk (h/let ['leaf (h/fn int?)
                     'tree (h/tuple (h/ref 'leaf) (h/ref 'leaf))]
                    (h/ref 'tree))
-            (-with-leaf-distance))
+            (-with-visit-order))
 
 ; test of no visit more than once, infinite loop otherwise
 #_(postwalk (h/let ['leaf (h/fn int?)
                     'tree (h/tuple (h/ref 'tree) (h/ref 'leaf))]
                    (h/ref 'tree))
-            (-with-leaf-distance))
+            (-with-visit-order))
 
-(defn -with-leaf-distance []
-  (let [counter (atom -1)]
-    (fn [model stack path]
-      (swap! counter inc)
-      (prn path)
-      ;(-> model (assoc :visited @counter)))))
-      (case (:type model)
-        (:fn :enum) (assoc model :leaf-distance 0)
-        ;:set-of :set
-        ;:map-of :map
-        ;:sequence-of :repeat
-        (:and :or
-         :alt :cat
-         :sequence) (let [distances (->> (:entries model)
-                                         (mapv (comp :leaf-distance :model))
-                                         (filter some?))]
-                      (cond-> model
-                        (seq distances) (assoc :leaf-distance (inc (apply min distances)))))
-        :let (let [body-distance (:leaf-distance (:body model))]
-               (cond-> model
-                 (some? body-distance) (assoc :leaf-distance (inc body-distance))))
-        :ref (let [key (:key model)
-                   index (find-stack-index stack key)
-                   binding-distance (get-in stack [index :bindings key :leaf-distance])]
-               (cond-> model
-                 (some? binding-distance) (assoc :leaf-distance (inc binding-distance))))))))
+(defn- assoc-leaf-distance-disjunction [model distances]
+  (let [non-nil-distances (filter some? distances)]
+    (cond-> model
+      (seq non-nil-distances)
+      (assoc :leaf-distance (inc (reduce min non-nil-distances))))))
+
+(defn- assoc-leaf-distance-conjunction [model distances]
+  (cond-> model
+    (every? some? distances)
+    (assoc :leaf-distance (inc (reduce max 0 distances)))))
+
+
+(defn -with-leaf-distance [model stack path]
+  ;(prn path)
+  (case (:type model)
+    (:fn :enum) (assoc model :leaf-distance 0)
+
+    ; TODO: get rid of the :set node, it can be replaced by [:set-of any?]
+    ;:set
+
+    :map-of (assoc-leaf-distance-conjunction model
+                                             [(-> model :keys :model :leaf-distance)
+                                              (-> model :values :model :leaf-distance)])
+    (:set-of
+     :sequence-of
+     :repeat) (assoc-leaf-distance-conjunction model
+                                               [(-> model :elements-model :leaf-distance)])
+    (:or
+     :alt) (assoc-leaf-distance-disjunction model
+                                            (mapv (comp :leaf-distance :model)
+                                                  (:entries model)))
+    (:and
+     :map
+     :sequence
+     :cat) (assoc-leaf-distance-conjunction model
+                                            (mapv (comp :leaf-distance :model)
+                                                  (:entries model)))
+    :let (let [body-distance (:leaf-distance (:body model))]
+           (cond-> model
+             (some? body-distance) (assoc :leaf-distance (inc body-distance))))
+    :ref (let [key (:key model)
+               index (find-stack-index stack key)
+               binding-distance (get-in stack [index :bindings key :leaf-distance])]
+           (cond-> model
+             (some? binding-distance) (assoc :leaf-distance (inc binding-distance))))))
+
+; Recursive data-structure impossible to generate
+#_(postwalk (h/let ['leaf (h/fn int?)
+                    'tree (h/tuple (h/ref 'tree) (h/ref 'leaf))]
+                   (h/ref 'tree))
+            -with-leaf-distance)
+
+; Recursive data-structure which can be generated
+#_(postwalk (h/let ['leaf (h/fn int?)
+                    'tree (h/alt (h/ref 'tree) (h/ref 'leaf))]
+                   (h/ref 'tree))
+            -with-leaf-distance)
