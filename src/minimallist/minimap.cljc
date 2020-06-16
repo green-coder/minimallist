@@ -15,9 +15,6 @@
                                      (h/with-optional-entries [:count-model (h/ref 'model)]
                                                               [:elements-model (h/ref 'model)]
                                                               [:condition-model (h/ref 'model)]))]
-                        [:set (-> (h/map [:type (h/val :set)])
-                                  (h/with-optional-entries [:count-model (h/ref 'model)]
-                                                           [:condition-model (h/ref 'model)]))]
                         [:map-of (-> (h/map [:type (h/val :map-of)])
                                      (h/with-optional-entries [:keys (h/map [:model (h/ref 'model)])]
                                                               [:values (h/map [:model (h/ref 'model)])]

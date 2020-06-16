@@ -21,7 +21,7 @@
             model (assoc :model model))))
 
 
-;; For :set-of, :set and :sequence-of
+;; For :set-of and :sequence-of
 (defn with-count [collection-model count-model]
   (assoc collection-model :count-model count-model))
 
@@ -97,7 +97,7 @@
    :entries (mapv -entry conditions)})
 
 (defn set []
-  {:type :set})
+  {:type :set-of})
 
 (defn set-of [elements-model]
   {:type :set-of

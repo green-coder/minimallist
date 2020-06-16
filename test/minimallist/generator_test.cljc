@@ -185,8 +185,7 @@
   (let [walk (fn walk [[stack walked-bindings] model path]
                (let [[[stack walked-bindings] model]
                      (case (:type model)
-                       (:fn :enum
-                        :set) [[stack walked-bindings] model]
+                       (:fn :enum) [[stack walked-bindings] model]
                        (:set-of :sequence-of
                         :repeat) (-> [[stack walked-bindings] model]
                                      (reduce-update :elements-model walk (conj path :elements-model)))
@@ -278,10 +277,6 @@
   ;(prn path)
   (case (:type model)
     (:fn :enum) (assoc model :leaf-distance 0)
-
-    ; TODO: get rid of the :set node, it can be replaced by [:set-of any?]
-    ;:set
-
     :map-of (assoc-leaf-distance-conjunction model
                                              [(-> model :keys :model :leaf-distance)
                                               (-> model :values :model :leaf-distance)])

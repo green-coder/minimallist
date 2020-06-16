@@ -105,15 +105,15 @@
                 (gen/let [index (gen/choose 0 (dec (count entries)))]
                   (generator context (:model (entries index)))))
 
-         (:set-of :set) (let [element-generator (if (contains? model :elements-model)
-                                                  (generator context (:elements-model model))
-                                                  gen/any)]
-                          (cond->> (if (contains? model :count-model)
-                                     (gen/bind (generator context (:count-model model))
-                                               (fn [num-elements]
-                                                 (gen/set element-generator {:num-elements num-elements})))
-                                     (gen/set element-generator))
-                            (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model)))))
+         :set-of (let [element-generator (if (contains? model :elements-model)
+                                           (generator context (:elements-model model))
+                                           gen/any)]
+                   (cond->> (if (contains? model :count-model)
+                              (gen/bind (generator context (:count-model model))
+                                        (fn [num-elements]
+                                          (gen/set element-generator {:num-elements num-elements})))
+                              (gen/set element-generator))
+                     (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model)))))
 
          (:map-of :map) (cond->> (if (contains? model :entries)
                                    (gen/bind (gen/vector gen/boolean (count (:entries model)))

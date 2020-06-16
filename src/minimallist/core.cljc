@@ -14,7 +14,7 @@
   ;; Supported node types
   [:fn :enum
    :and :or
-   :set-of :set :map-of :map :sequence-of :sequence
+   :set-of :map-of :map :sequence-of :sequence
    :alt :cat :repeat
    :let :ref])
 
@@ -23,7 +23,7 @@
 ;; - logical (they test properties on values and lead to booleans, they are not used to describe their structure).
 
 ;; Structural predicates can be predefined extensively:
-;; [:set-of :set :map-of :map :sequence-of :sequence :alt :cat :repeat]
+;; [:set-of :map-of :map :sequence-of :sequence :alt :cat :repeat]
 
 ;; Logical predicates are everything else, for instance:
 ;; [:fn :enum :and :or]
@@ -84,13 +84,13 @@
     (:or :alt) (some (fn [entry]
                        (-valid? context (:model entry) data))
                      (:entries model))
-    (:set-of :set) (and (set? data)
-                        (implies (contains? model :count-model)
-                                 (-valid? context (:count-model model) (count data)))
-                        (implies (contains? model :elements-model)
-                                 (every? (partial -valid? context (:elements-model model)) data))
-                        (implies (contains? model :condition-model)
-                                 (-valid? context (:condition-model model) data)))
+    :set-of (and (set? data)
+                 (implies (contains? model :count-model)
+                          (-valid? context (:count-model model) (count data)))
+                 (implies (contains? model :elements-model)
+                          (every? (partial -valid? context (:elements-model model)) data))
+                 (implies (contains? model :condition-model)
+                          (-valid? context (:condition-model model) data)))
     (:map-of :map) (and (map? data)
                         (implies (contains? model :entries)
                                  (every? (fn [entry]
@@ -224,18 +224,18 @@
          :or {:valid? (some (fn [entry]
                               (:valid? (describe context (:model entry) data)))
                             (:entries model))}
-         (:set-of :set) (if (set? data)
-                          (let [entries (when (contains? model :elements-model)
-                                          (into #{}
-                                                (map (partial describe context (:elements-model model)))
-                                                data))]
-                            (cond-> {:valid? (and (implies (contains? model :elements-model)
-                                                           (every? :valid? entries))
-                                                  (implies (contains? model :count-model)
-                                                           (:valid? (describe context (:count-model model) (count data))))
-                                                  (implies (contains? model :condition-model)
-                                                           (:valid? (describe context (:condition-model model) data))))}
-                                    (contains? model :elements-model) (assoc :entries entries))))
+         :set-of (if (set? data)
+                   (let [entries (when (contains? model :elements-model)
+                                   (into #{}
+                                         (map (partial describe context (:elements-model model)))
+                                         data))]
+                     (cond-> {:valid? (and (implies (contains? model :elements-model)
+                                                    (every? :valid? entries))
+                                           (implies (contains? model :count-model)
+                                                    (:valid? (describe context (:count-model model) (count data))))
+                                           (implies (contains? model :condition-model)
+                                                    (:valid? (describe context (:condition-model model) data))))}
+                             (contains? model :elements-model) (assoc :entries entries))))
          (:map-of :map) (if (map? data)
                           (let [entries (into {}
                                               (keep (fn [entry]
