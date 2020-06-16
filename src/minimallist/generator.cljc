@@ -1,6 +1,105 @@
 (ns minimallist.generator
   (:require [minimallist.core :refer [valid?]]
+            [minimallist.util :refer [reduce-update reduce-update-in reduce-mapv]]
             [clojure.test.check.generators :as gen]))
+
+
+(defn- find-stack-index [stack key]
+  (loop [index (dec (count stack))
+         elements (rseq stack)]
+    (when elements
+      (let [elm (first elements)]
+        (if (contains? (:bindings elm) key)
+          index
+          (recur (dec index) (next elements)))))))
+
+;; TODO: walk on :count-model and :condition-model nodes
+(defn postwalk [model visitor]
+  (let [walk (fn walk [[stack walked-bindings] model path]
+               (let [[[stack walked-bindings] model]
+                     (case (:type model)
+                       (:fn :enum) [[stack walked-bindings] model]
+                       (:set-of :sequence-of
+                        :repeat) (-> [[stack walked-bindings] model]
+                                     (reduce-update :elements-model walk (conj path :elements-model)))
+                       :map-of (-> [[stack walked-bindings] model]
+                                   (reduce-update-in [:keys :model] walk (conj path :keys :model))
+                                   (reduce-update-in [:values :model] walk (conj path :values :model)))
+                       (:and :or
+                        :map :sequence
+                        :alt :cat) (cond-> [[stack walked-bindings] model]
+                                     (contains? model :entries)
+                                     (reduce-update :entries (fn [[stack walked-bindings] entries]
+                                                               (reduce-mapv (fn [[stack walked-bindings] [index entry]]
+                                                                              (reduce-update [[stack walked-bindings] entry] :model
+                                                                                             walk (conj path :entries index :model)))
+                                                                            [stack walked-bindings]
+                                                                            (map-indexed vector entries)))))
+                       :let (let [[[stack' walked-bindings'] walked-body] (walk [(conj stack {:bindings (:bindings model)
+                                                                                              :path (conj path :bindings)})
+                                                                                 walked-bindings]
+                                                                                (:body model)
+                                                                                (conj path :body))]
+                              [[(pop stack') walked-bindings'] (assoc model
+                                                                 :bindings (:bindings (peek stack'))
+                                                                 :body walked-body)])
+                       :ref (let [key (:key model)
+                                  index (find-stack-index stack key)
+                                  binding-path (conj (get-in stack [index :path]) key)]
+                              (if (contains? walked-bindings binding-path)
+                                [[stack walked-bindings] model]
+                                (let [[[stack' walked-bindings'] walked-ref-model] (walk [(subvec stack 0 (inc index))
+                                                                                          (conj walked-bindings binding-path)]
+                                                                                         (get-in stack [index :bindings key])
+                                                                                         binding-path)]
+                                  [[(-> stack'
+                                        (assoc-in [index :bindings key] walked-ref-model)
+                                        (into (subvec stack (inc index)))) walked-bindings'] model]))))]
+                 [[stack walked-bindings] (visitor model stack path)]))]
+    (second (walk [[] #{}] model []))))
+
+
+(defn- assoc-leaf-distance-disjunction [model distances]
+  (let [non-nil-distances (filter some? distances)]
+    (cond-> model
+      (seq non-nil-distances)
+      (assoc :leaf-distance (inc (reduce min non-nil-distances))))))
+
+(defn- assoc-leaf-distance-conjunction [model distances]
+  (cond-> model
+    (every? some? distances)
+    (assoc :leaf-distance (inc (reduce max 0 distances)))))
+
+(defn assoc-leaf-distance-visitor [model stack path]
+  ;(prn path)
+  (case (:type model)
+    (:fn :enum) (assoc model :leaf-distance 0)
+    :map-of (assoc-leaf-distance-conjunction model
+                                             [(-> model :keys :model :leaf-distance)
+                                              (-> model :values :model :leaf-distance)])
+    (:set-of
+     :sequence-of
+     :repeat) (assoc-leaf-distance-conjunction model
+                                               [(-> model :elements-model :leaf-distance)])
+    (:or
+     :alt) (assoc-leaf-distance-disjunction model
+                                            (mapv (comp :leaf-distance :model)
+                                                  (:entries model)))
+    (:and
+     :map
+     :sequence
+     :cat) (assoc-leaf-distance-conjunction model
+                                            (mapv (comp :leaf-distance :model)
+                                                  (:entries model)))
+    :let (let [body-distance (:leaf-distance (:body model))]
+           (cond-> model
+             (some? body-distance) (assoc :leaf-distance (inc body-distance))))
+    :ref (let [key (:key model)
+               index (find-stack-index stack key)
+               binding-distance (get-in stack [index :bindings key :leaf-distance])]
+           (cond-> model
+             (some? binding-distance) (assoc :leaf-distance (inc binding-distance))))))
+
 
 
 ;; Temporally move this here, will be used later
