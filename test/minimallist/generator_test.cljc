@@ -86,6 +86,16 @@
        expected-walked-model)
 
     ; Recursive data-structure impossible to generate
+    ; This one is trying to bring the function generator in an infinite loop.
+    (h/let ['loop (h/ref 'loop)]
+           (h/ref 'loop))
+    {:type :let
+     :bindings {'loop {:type :ref
+                       :key 'loop}}
+     :body {:type :ref
+            :key 'loop}}
+
+    ; Recursive data-structure impossible to generate
     (h/let ['leaf (h/fn int?)
             'tree (h/tuple (h/ref 'tree) (h/ref 'leaf))]
            (h/ref 'tree))
@@ -100,6 +110,21 @@
                                           :leaf-distance 1}}]}}
      :body {:type :ref
             :key 'tree}}
+
+    ; Recursive data-structure impossible to generate
+    (h/let ['rec-map (h/map [:a (h/fn int?)]
+                            [:b (h/ref 'rec-map)])]
+           (h/ref 'rec-map))
+    {:type :let
+     :bindings {'rec-map {:type :map
+                          :entries [{:key :a
+                                     :model {:type :fn
+                                             :leaf-distance 0}}
+                                    {:key :b
+                                     :model {:type :ref
+                                             :key 'rec-map}}]}}
+     :body {:type :ref
+            :key 'rec-map}}
 
     ; Recursive data-structure which can be generated
     (h/let ['leaf (h/fn int?)
@@ -119,6 +144,24 @@
             :key 'tree
             :leaf-distance 3}
      :leaf-distance 4}
+
+    (h/let ['rec-map (h/map [:a (h/fn int?)]
+                            [:b {:optional true} (h/ref 'rec-map)])]
+           (h/ref 'rec-map))
+    {:type :let
+     :bindings {'rec-map {:type :map
+                          :entries [{:key :a
+                                     :model {:type :fn
+                                             :leaf-distance 0}}
+                                    {:key :b
+                                     :optional true
+                                     :model {:type :ref
+                                             :key 'rec-map}}]
+                          :leaf-distance 1}}
+     :body {:type :ref
+            :key 'rec-map
+            :leaf-distance 2}
+     :leaf-distance 3}
 
     #__))
 

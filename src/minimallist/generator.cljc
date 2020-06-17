@@ -89,8 +89,9 @@
      :map
      :sequence
      :cat) (assoc-leaf-distance-conjunction model
-                                            (mapv (comp :leaf-distance :model)
-                                                  (:entries model)))
+                                            (->> (:entries model)
+                                                 (remove :optional)
+                                                 (mapv (comp :leaf-distance :model))))
     :let (let [body-distance (:leaf-distance (:body model))]
            (cond-> model
              (some? body-distance) (assoc :leaf-distance (inc body-distance))))
@@ -187,7 +188,7 @@
     (gen/fmap vector (generator context model))))
 
 (defn generator
-  "Returns a generator derived from the model."
+  "Returns a test.check generator derived from the model."
   ([model]
    (generator {} model))
   ([context model]
