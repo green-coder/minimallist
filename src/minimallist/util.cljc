@@ -21,12 +21,18 @@
           [acc []]
           coll))
 
+(defn walk-map-select-keys [expr keys-to-select]
+  (walk/postwalk (fn [expr]
+                   (cond-> expr
+                     (map? expr) (select-keys keys-to-select)))
+                 expr))
+
 (defn walk-map-dissoc [expr & keys-to-dissoc]
   (walk/postwalk (fn [expr]
                   (if (map? expr)
                     (apply dissoc expr keys-to-dissoc)
                     expr))
-               expr))
+                 expr))
 
 (defn cleanup-description [description keys-to-remove]
   (walk/postwalk
