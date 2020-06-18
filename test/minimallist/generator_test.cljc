@@ -101,13 +101,13 @@
            (h/ref 'tree))
     {:type :let
      :bindings {'leaf {:type :fn
-                       :leaf-distance 0}
+                       ::g/leaf-distance 0}
                 'tree {:type :sequence
                        :entries [{:model {:type :ref
                                           :key 'tree}}
                                  {:model {:type :ref
                                           :key 'leaf
-                                          :leaf-distance 1}}]}}
+                                          ::g/leaf-distance 1}}]}}
      :body {:type :ref
             :key 'tree}}
 
@@ -119,7 +119,7 @@
      :bindings {'rec-map {:type :map
                           :entries [{:key :a
                                      :model {:type :fn
-                                             :leaf-distance 0}}
+                                             ::g/leaf-distance 0}}
                                     {:key :b
                                      :model {:type :ref
                                              :key 'rec-map}}]}}
@@ -132,18 +132,18 @@
            (h/ref 'tree))
     {:type :let
      :bindings {'leaf {:type :fn
-                       :leaf-distance 0}
+                       ::g/leaf-distance 0}
                 'tree {:type :alt
                        :entries [{:model {:type :ref
                                           :key 'tree}}
                                  {:model {:type :ref
                                           :key 'leaf
-                                          :leaf-distance 1}}]
-                       :leaf-distance 2}}
+                                          ::g/leaf-distance 1}}]
+                       ::g/leaf-distance 2}}
      :body {:type :ref
             :key 'tree
-            :leaf-distance 3}
-     :leaf-distance 4}
+            ::g/leaf-distance 3}
+     ::g/leaf-distance 4}
 
     (h/let ['rec-map (h/map [:a (h/fn int?)]
                             [:b {:optional true} (h/ref 'rec-map)])]
@@ -152,16 +152,16 @@
      :bindings {'rec-map {:type :map
                           :entries [{:key :a
                                      :model {:type :fn
-                                             :leaf-distance 0}}
+                                             ::g/leaf-distance 0}}
                                     {:key :b
                                      :optional true
                                      :model {:type :ref
                                              :key 'rec-map}}]
-                          :leaf-distance 1}}
+                          ::g/leaf-distance 1}}
      :body {:type :ref
             :key 'rec-map
-            :leaf-distance 2}
-     :leaf-distance 3}
+            ::g/leaf-distance 2}
+     ::g/leaf-distance 3}
 
     #__))
 

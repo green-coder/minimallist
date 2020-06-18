@@ -63,27 +63,27 @@
   (let [non-nil-distances (filter some? distances)]
     (cond-> model
       (seq non-nil-distances)
-      (assoc :leaf-distance (inc (reduce min non-nil-distances))))))
+      (assoc ::leaf-distance (inc (reduce min non-nil-distances))))))
 
 (defn- assoc-leaf-distance-conjunction [model distances]
   (cond-> model
     (every? some? distances)
-    (assoc :leaf-distance (inc (reduce max 0 distances)))))
+    (assoc ::leaf-distance (inc (reduce max 0 distances)))))
 
 (defn assoc-leaf-distance-visitor [model stack path]
   ;(prn path)
   (case (:type model)
-    (:fn :enum) (assoc model :leaf-distance 0)
+    (:fn :enum) (assoc model ::leaf-distance 0)
     :map-of (assoc-leaf-distance-conjunction model
-                                             [(-> model :keys :model :leaf-distance)
-                                              (-> model :values :model :leaf-distance)])
+                                             [(-> model :keys :model ::leaf-distance)
+                                              (-> model :values :model ::leaf-distance)])
     (:set-of
      :sequence-of
      :repeat) (assoc-leaf-distance-conjunction model
-                                               [(-> model :elements-model :leaf-distance)])
+                                               [(-> model :elements-model ::leaf-distance)])
     (:or
      :alt) (assoc-leaf-distance-disjunction model
-                                            (mapv (comp :leaf-distance :model)
+                                            (mapv (comp ::leaf-distance :model)
                                                   (:entries model)))
     (:and
      :map
@@ -91,15 +91,15 @@
      :cat) (assoc-leaf-distance-conjunction model
                                             (->> (:entries model)
                                                  (remove :optional)
-                                                 (mapv (comp :leaf-distance :model))))
-    :let (let [body-distance (:leaf-distance (:body model))]
+                                                 (mapv (comp ::leaf-distance :model))))
+    :let (let [body-distance (::leaf-distance (:body model))]
            (cond-> model
-             (some? body-distance) (assoc :leaf-distance (inc body-distance))))
+             (some? body-distance) (assoc ::leaf-distance (inc body-distance))))
     :ref (let [key (:key model)
                index (find-stack-index stack key)
-               binding-distance (get-in stack [index :bindings key :leaf-distance])]
+               binding-distance (get-in stack [index :bindings key ::leaf-distance])]
            (cond-> model
-             (some? binding-distance) (assoc :leaf-distance (inc binding-distance))))))
+             (some? binding-distance) (assoc ::leaf-distance (inc binding-distance))))))
 
 
 
