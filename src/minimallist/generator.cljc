@@ -173,12 +173,15 @@
            (:inlined model true))
     (or (:test.check/generator model)
         (case (:type model)
+          ;; TODO: avoid choosing a model that cannot be generated.
+          ;; TODO: choose specific ones when running out of budget.
           :alt (gen/let [entry (gen/elements (:entries model))]
                  (sequence-generator context (:model entry)))
           :cat (->> (apply gen/tuple (mapv (fn [entry]
                                              (sequence-generator context (:model entry)))
                                            (:entries model)))
                     (gen/fmap (fn [xs] (into [] cat xs))))
+          ;; TODO: choose n-repeat according to the budget.
           :repeat (gen/let [n-repeat (gen/choose (:min model) (:max model))
                             sequences (gen/vector (sequence-generator context (:elements-model model))
                                                   n-repeat)]
@@ -201,10 +204,15 @@
 
          (:and :or) nil ;; a generator is supposed to be provided for those nodes
 
+         ;; TODO: avoid choosing a model that cannot be generated.
+         ;; TODO: choose specific ones when running out of budget.
          :alt (let [entries (:entries model)]
                 (gen/let [index (gen/choose 0 (dec (count entries)))]
                   (generator context (:model (entries index)))))
 
+         ;; TODO: choose a count according to the budget when :count-model is not specified.
+         ;; Problem: we don't know how to pick a small value when :count-model is specified.
+         ;;          we could handle the simple case where :count-model is just an enum.
          :set-of (let [element-generator (if (contains? model :elements-model)
                                            (generator context (:elements-model model))
                                            gen/any)]
@@ -215,6 +223,8 @@
                               (gen/set element-generator))
                      (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model)))))
 
+         ;; TODO: avoid choosing optional keys that cannot be generated.
+         ;; TODO: avoid optional entries when running out of budget.
          (:map-of :map) (cond->> (if (contains? model :entries)
                                    (gen/bind (gen/vector gen/boolean (count (:entries model)))
                                              (fn [random-bools]
@@ -249,7 +259,6 @@
                                                              inside-list? (gen/fmap (partial apply list)))))))
                                     (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model))))
 
-         ;; TODO: enforce :count-model when specified
          (:cat :repeat) (cond->> (gen/bind gen/boolean
                                            (fn [random-bool]
                                              (let [gen (sequence-generator context model)]
@@ -263,6 +272,6 @@
 
          :let (generator (merge context (:bindings model)) (:body model))
 
-         ;; scary possible infinite recursion problems
+         ;; TODO: solve the scary possible infinite recursion problems
          :ref (generator context (get context (:key model)))))))
 
