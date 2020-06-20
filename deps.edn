@@ -1,10 +1,10 @@
 {:paths   ["src"]
- :aliases {:test {:extra-paths ["test"]
-                  :extra-deps  {lambdaisland/kaocha {:mvn/version "0.0-554"}
-                                lambdaisland/kaocha-cljs {:mvn/version "0.0-59"}
-                                lambdaisland/kaocha-junit-xml {:mvn/version "0.0-70"}}}}
- :deps    {org.clojure/clojure {:mvn/version "1.10.1"}
-           org.clojure/test.check {:mvn/version "0.10.0"}}}
+ :deps    {org.clojure/clojure {:mvn/version "1.10.1"}}
+ :aliases {:test-check {:extra-deps {org.clojure/test.check {:mvn/version "0.10.0"}}}
+           :test       {:extra-paths ["test"]
+                        :extra-deps  {lambdaisland/kaocha           {:mvn/version "0.0-554"}
+                                      lambdaisland/kaocha-cljs      {:mvn/version "0.0-59"}
+                                      lambdaisland/kaocha-junit-xml {:mvn/version "0.0-70"}}}}}
 
 ;; Memo for deploying a new release:
 ;; - change the version in pom.xml
