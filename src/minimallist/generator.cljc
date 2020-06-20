@@ -101,6 +101,59 @@
            (cond-> model
              (some? binding-distance) (assoc ::leaf-distance (inc binding-distance))))))
 
+(defn- min-count-value [model]
+  (let [count-model (:count-model model)]
+    (if (nil? count-model) 0
+      (case (:type count-model)
+        :enum (let [values (filter number? (:values count-model))]
+                (when (seq values)
+                  (apply min values)))
+        :fn (:min-value count-model)
+        nil))))
+
+(defn assoc-min-cost-visitor [model stack path]
+  (let [type (:type model)
+        min-cost (case type
+                   (:fn :enum) (::min-cost model 1)
+                   :map-of (let [min-count (min-count-value model)
+                                 key-min-cost (-> model :keys :model ::min-cost)
+                                 value-min-cost (-> model :values :model ::min-cost)]
+                             (if (zero? min-count) 0
+                               (when (and min-count key-min-cost value-min-cost)
+                                 (inc (* min-count (+ key-min-cost value-min-cost))))))
+                   (:set-of
+                    :sequence-of
+                    :repeat) (let [min-count (min-count-value model)
+                                   elements-model-min-cost (-> model :elements-model ::min-cost)]
+                               (if (zero? min-count) 0
+                                 (when (and min-count elements-model-min-cost)
+                                   (cond-> (* elements-model-min-cost min-count)
+                                     (#{:set-of :sequence-of} type) inc))))
+                   (:or
+                    :alt) (let [existing-vals (->> (:entries model)
+                                                   (map (comp ::min-cost :model))
+                                                   (filter some?))]
+                            (when (seq existing-vals)
+                              (reduce min existing-vals)))
+                   :and (let [vals (map (comp ::min-cost :model) (:entries model))]
+                          (when (and (seq vals) (every? some? vals))
+                            (reduce max vals)))
+                   (:map
+                    :sequence
+                    :cat) (let [vals (->> (:entries model)
+                                          (remove :optional)
+                                          (map (comp ::min-cost :model)))]
+                            (when (every? some? vals)
+                              (cond-> (reduce + vals)
+                                (or (#{:map :sequence} type)
+                                    (:coll-type model)
+                                    (not (:inlined model true))) inc)))
+                   :let (::min-cost (:body model))
+                   :ref (let [key (:key model)
+                              index (find-stack-index stack key)]
+                          (get-in stack [index :bindings key ::min-cost])))]
+    (cond-> model
+      (some? min-cost) (assoc ::min-cost min-cost))))
 
 
 ;; Temporally move this here, will be used later

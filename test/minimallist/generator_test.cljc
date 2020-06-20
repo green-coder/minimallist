@@ -1,8 +1,6 @@
 (ns minimallist.generator-test
   (:require [clojure.test :refer [deftest testing is are]]
             [clojure.test.check.generators :as gen]
-            [clojure.test.check.properties :as prop]
-            [clojure.test.check :as tc]
             [minimallist.core :refer [valid?]]
             [minimallist.helper :as h]
             [minimallist.util :as util]
@@ -81,7 +79,7 @@
 (deftest assoc-leaf-distance-visitor-test
   (are [model expected-walked-model]
     (= (-> model
-           (g/postwalk #'g/assoc-leaf-distance-visitor)
+           (g/postwalk g/assoc-leaf-distance-visitor)
            (util/walk-map-dissoc :fn))
        expected-walked-model)
 
@@ -165,6 +163,95 @@
 
     #__))
 
+
+(deftest assoc-min-cost-visitor-test
+  (are [model expected-walked-model]
+    (= (-> model
+           (g/postwalk g/assoc-min-cost-visitor)
+           (util/walk-map-dissoc :fn))
+       expected-walked-model)
+
+    (h/tuple (h/fn int?) (h/fn string?))
+    {:type :sequence
+     :entries [{:model {:type :fn
+                        ::g/min-cost 1}}
+               {:model {:type :fn
+                        ::g/min-cost 1}}]
+     ::g/min-cost 3}
+
+    (h/cat (h/fn int?) (h/fn string?))
+    {:type :cat
+     :entries [{:model {:type :fn
+                        ::g/min-cost 1}}
+               {:model {:type :fn
+                        ::g/min-cost 1}}]
+     ::g/min-cost 2}
+
+    (h/in-vector (h/cat (h/fn int?) (h/fn string?)))
+    {:type :cat
+     :coll-type :vector
+     :entries [{:model {:type :fn
+                        ::g/min-cost 1}}
+               {:model {:type :fn
+                        ::g/min-cost 1}}]
+     ::g/min-cost 3}
+
+    (h/not-inlined (h/cat (h/fn int?) (h/fn string?)))
+    {:type :cat
+     :inlined false
+     :entries [{:model {:type :fn
+                        ::g/min-cost 1}}
+               {:model {:type :fn
+                        ::g/min-cost 1}}]
+     ::g/min-cost 3}
+
+    (h/map [:a (h/fn int?)]
+           [:b {:optional true} (h/fn int?)])
+    {:type :map
+     :entries [{:key :a
+                :model {:type :fn
+                        ::g/min-cost 1}}
+               {:key :b
+                :optional true
+                :model {:type :fn
+                        ::g/min-cost 1}}]
+     ::g/min-cost 2}
+
+    (h/map-of (h/fn keyword?) (h/fn int?))
+    {:type :map-of
+     :keys {:model {:type :fn
+                    ::g/min-cost 1}}
+     :values {:model {:type :fn
+                      ::g/min-cost 1}}
+     ::g/min-cost 0}
+
+    (-> (h/map-of (h/fn keyword?) (h/fn int?))
+        (h/with-count (h/enum #{3 4})))
+    {:type :map-of
+     :keys {:model {:type :fn
+                    ::g/min-cost 1}}
+     :values {:model {:type :fn
+                      ::g/min-cost 1}}
+     :count-model {:type :enum
+                   :values #{3 4}}
+     ::g/min-cost 7}
+
+    (h/let ['foo (-> (h/set-of (h/fn int?))
+                     (h/with-count (h/val 3)))]
+           (h/ref 'foo))
+    {:type :let
+     :bindings {'foo {:type :set-of
+                      :count-model {:type :enum
+                                    :values #{3}}
+                      :elements-model {:type :fn
+                                       ::g/min-cost 1}
+                      ::g/min-cost 4}}
+     :body {:type :ref
+            :key 'foo
+            ::g/min-cost 4}
+     ::g/min-cost 4}
+
+    #__))
 
 
 (comment
