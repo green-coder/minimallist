@@ -20,8 +20,9 @@
                      (case (:type model)
                        (:fn :enum) [[stack walked-bindings] model]
                        (:set-of :sequence-of
-                        :repeat) (-> [[stack walked-bindings] model]
-                                     (reduce-update :elements-model walk (conj path :elements-model)))
+                        :repeat) (cond-> [[stack walked-bindings] model]
+                                   (contains? model :elements-model)
+                                   (reduce-update :elements-model walk (conj path :elements-model)))
                        :map-of (-> [[stack walked-bindings] model]
                                    (reduce-update-in [:keys :model] walk (conj path :keys :model))
                                    (reduce-update-in [:values :model] walk (conj path :values :model)))
@@ -59,57 +60,53 @@
     (second (walk [[] #{}] model []))))
 
 
-(defn- assoc-leaf-distance-disjunction [model distances]
-  (let [non-nil-distances (filter some? distances)]
-    (cond-> model
-      (seq non-nil-distances)
-      (assoc ::leaf-distance (inc (reduce min non-nil-distances))))))
-
-(defn- assoc-leaf-distance-conjunction [model distances]
-  (cond-> model
-    (every? some? distances)
-    (assoc ::leaf-distance (inc (reduce max 0 distances)))))
-
-(defn assoc-leaf-distance-visitor [model stack path]
-  ;(prn path)
-  (case (:type model)
-    (:fn :enum) (assoc model ::leaf-distance 0)
-    :map-of (assoc-leaf-distance-conjunction model
-                                             [(-> model :keys :model ::leaf-distance)
-                                              (-> model :values :model ::leaf-distance)])
-    (:set-of
-     :sequence-of
-     :repeat) (assoc-leaf-distance-conjunction model
-                                               [(-> model :elements-model ::leaf-distance)])
-    (:or
-     :alt) (assoc-leaf-distance-disjunction model
-                                            (mapv (comp ::leaf-distance :model)
-                                                  (:entries model)))
-    (:and
-     :map
-     :sequence
-     :cat) (assoc-leaf-distance-conjunction model
-                                            (->> (:entries model)
-                                                 (remove :optional)
-                                                 (mapv (comp ::leaf-distance :model))))
-    :let (let [body-distance (::leaf-distance (:body model))]
-           (cond-> model
-             (some? body-distance) (assoc ::leaf-distance (inc body-distance))))
-    :ref (let [key (:key model)
-               index (find-stack-index stack key)
-               binding-distance (get-in stack [index :bindings key ::leaf-distance])]
-           (cond-> model
-             (some? binding-distance) (assoc ::leaf-distance (inc binding-distance))))))
-
 (defn- min-count-value [model]
   (let [count-model (:count-model model)]
-    (if (nil? count-model) 0
+    (if (nil? count-model)
+      0
       (case (:type count-model)
         :enum (let [values (filter number? (:values count-model))]
                 (when (seq values)
                   (apply min values)))
         :fn (:min-value count-model)
         nil))))
+
+(defn assoc-leaf-distance-visitor [model stack path]
+  (let [distance (case (:type model)
+                   (:fn :enum) 0
+                   :map-of (let [key-distance (-> model :keys :model ::leaf-distance)
+                                 value-distance (-> model :values :model ::leaf-distance)]
+                             (cond
+                               (zero? (min-count-value model)) 0
+                               (and key-distance value-distance) (inc (max key-distance value-distance))))
+                   (:set-of
+                    :sequence-of
+                    :repeat) (if (or (not (contains? model :elements-model))
+                                     (zero? (min-count-value model))
+                                     (zero? (:min model)))
+                               0
+                               (some-> (-> model :elements-model ::leaf-distance) inc))
+                   (:or
+                    :alt) (let [distances (->> (:entries model)
+                                               (map (comp ::leaf-distance :model))
+                                               (remove nil?))]
+                            (when (seq distances)
+                              (inc (reduce min distances))))
+                   (:and
+                    :map
+                    :sequence
+                    :cat) (let [distances (->> (:entries model)
+                                               (remove :optional)
+                                               (map (comp ::leaf-distance :model)))]
+                            (when (every? some? distances)
+                              (inc (reduce max 0 distances))))
+                   :let (some-> (-> model :body ::leaf-distance) inc)
+                   :ref (let [key (:key model)
+                              index (find-stack-index stack key)
+                              binding-distance (get-in stack [index :bindings key ::leaf-distance])]
+                          (some-> binding-distance inc)))]
+    (cond-> model
+      (some? distance) (assoc ::leaf-distance distance))))
 
 (defn assoc-min-cost-visitor [model stack path]
   (let [type (:type model)
