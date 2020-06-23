@@ -34,6 +34,18 @@
                     expr))
                  expr))
 
+(defn iterate-while-different
+  "Iterates f on val until the (= val (f val)) up to maximum number of iterations,
+   then returns val."
+  [f val max-iterations]
+  (->> (iterate f val)
+       (partition 2 1)
+       (take max-iterations)
+       (take-while (fn [[x y]] (not= x y)))
+       (cons (list nil val))
+       last
+       second))
+
 (defn cleanup-description [description keys-to-remove]
   (walk/postwalk
     (fn [node]
