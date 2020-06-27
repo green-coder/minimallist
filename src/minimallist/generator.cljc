@@ -1,6 +1,6 @@
 (ns minimallist.generator
   (:require [minimallist.core :refer [valid?]]
-            [minimallist.util :refer [reduce-update reduce-update-in reduce-mapv]]
+            [minimallist.util :refer [reduce-update reduce-update-in reduce-mapv] :as util]
             [clojure.test.check.generators :as gen]))
 
 
@@ -218,7 +218,7 @@
 
 (defn- sequence-generator
   "Returns a generator of a sequence."
-  [context model]
+  [context model budget]
   (if (and (#{:alt :cat :repeat :let :ref} (:type model))
            (:inlined model true))
     (or (:test.check/generator model)
@@ -226,102 +226,118 @@
           ;; TODO: avoid choosing a model that cannot be generated.
           ;; TODO: choose specific ones when running out of budget.
           :alt (gen/let [entry (gen/elements (:entries model))]
-                 (sequence-generator context (:model entry)))
+                 (sequence-generator context (:model entry) budget))
           :cat (->> (apply gen/tuple (mapv (fn [entry]
-                                             (sequence-generator context (:model entry)))
+                                             (sequence-generator context (:model entry) budget))
                                            (:entries model)))
                     (gen/fmap (fn [xs] (into [] cat xs))))
           ;; TODO: choose n-repeat according to the budget.
           :repeat (gen/let [n-repeat (gen/choose (:min model) (:max model))
-                            sequences (gen/vector (sequence-generator context (:elements-model model))
+                            sequences (gen/vector (sequence-generator context (:elements-model model) budget)
                                                   n-repeat)]
                     (into [] cat sequences))
-          :let (sequence-generator (merge context (:bindings model)) (:body model))
-          :ref (sequence-generator context (get context (:key model)))))
-    (gen/fmap vector (generator context model))))
+          :let (sequence-generator (merge context (:bindings model)) (:body model) budget)
+          :ref (sequence-generator context (get context (:key model)) budget)))
+    (gen/fmap vector (generator context model budget))))
 
-(defn generator
+(defn- generator
+  "Returns a generator of a data structure."
+  [context model budget]
+  (or (:test.check/generator model)
+      (case (:type model)
+
+        :fn nil ;; a generator is supposed to be provided for those nodes
+
+        :enum (gen/elements (:values model))
+
+        (:and :or) nil ;; a generator is supposed to be provided for those nodes
+
+        ;; TODO: avoid choosing a model that cannot be generated.
+        ;; TODO: choose specific ones when running out of budget.
+        :alt (let [entries (:entries model)]
+               (gen/let [index (gen/choose 0 (dec (count entries)))]
+                 (generator context (:model (entries index)) budget)))
+
+        ;; TODO: choose a count according to the budget when :count-model is not specified.
+        ;; Problem: we don't know how to pick a small value when :count-model is specified.
+        ;;          we could handle the simple case where :count-model is just an enum.
+        :set-of (let [element-generator (if (contains? model :elements-model)
+                                          (generator context (:elements-model model) budget)
+                                          gen/any)]
+                  (cond->> (if (contains? model :count-model)
+                             (gen/bind (generator context (:count-model model) budget)
+                                       (fn [num-elements]
+                                         (gen/set element-generator {:num-elements num-elements})))
+                             (gen/set element-generator))
+                    (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model)))))
+
+        ;; TODO: avoid choosing optional keys that cannot be generated.
+        ;; TODO: avoid optional entries when running out of budget.
+        (:map-of :map) (cond->> (if (contains? model :entries)
+                                  (gen/bind (gen/vector gen/boolean (count (:entries model)))
+                                            (fn [random-bools]
+                                              (->> (map (fn [entry included?]
+                                                          (when (or (not (:optional entry)) included?)
+                                                            [(:key entry) (generator context (:model entry) budget)]))
+                                                        (:entries model) random-bools)
+                                                   (filter some?)
+                                                   (apply concat)
+                                                   (apply gen/hash-map))))
+                                  ;; Maybe consider supporting :count-model for generators
+                                  (gen/map (generator context (-> model :keys :model) budget)
+                                           (generator context (-> model :values :model) budget)))
+                         (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model))))
+
+        (:sequence-of :sequence) (cond->> (gen/bind gen/boolean
+                                                    (fn [random-bool]
+                                                      (let [gen (if (contains? model :entries)
+                                                                  (apply gen/tuple (map (fn [entry]
+                                                                                          (generator context (:model entry) budget))
+                                                                                        (:entries model)))
+                                                                  (let [elements-gen (generator context (:elements-model model) budget)]
+                                                                    (if (contains? model :count-model)
+                                                                      (gen/bind (generator context (:count-model model) budget)
+                                                                                (fn [count] (gen/vector elements-gen count)))
+                                                                      (gen/vector elements-gen))))]
+                                                        (let [inside-list? (case (:coll-type model)
+                                                                             :list true
+                                                                             :vector false
+                                                                             random-bool)]
+                                                          (cond->> gen
+                                                            inside-list? (gen/fmap (partial apply list)))))))
+                                   (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model))))
+
+        (:cat :repeat) (cond->> (gen/bind gen/boolean
+                                          (fn [random-bool]
+                                            (let [gen (sequence-generator context model budget)]
+                                              (let [inside-list? (case (:coll-type model)
+                                                                   :list true
+                                                                   :vector false
+                                                                   random-bool)]
+                                                (cond->> gen
+                                                  inside-list? (gen/fmap (partial apply list)))))))
+                                (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model))))
+
+        :let (generator (merge context (:bindings model)) (:body model) budget)
+
+        :ref (generator context (get context (:key model)) budget))))
+
+(defn gen
   "Returns a test.check generator derived from the model."
   ([model]
-   (generator {} model))
-  ([context model]
-   (or (:test.check/generator model)
-       (case (:type model)
-
-         :fn nil ;; a generator is supposed to be provided for those nodes
-
-         :enum (gen/elements (:values model))
-
-         (:and :or) nil ;; a generator is supposed to be provided for those nodes
-
-         ;; TODO: avoid choosing a model that cannot be generated.
-         ;; TODO: choose specific ones when running out of budget.
-         :alt (let [entries (:entries model)]
-                (gen/let [index (gen/choose 0 (dec (count entries)))]
-                  (generator context (:model (entries index)))))
-
-         ;; TODO: choose a count according to the budget when :count-model is not specified.
-         ;; Problem: we don't know how to pick a small value when :count-model is specified.
-         ;;          we could handle the simple case where :count-model is just an enum.
-         :set-of (let [element-generator (if (contains? model :elements-model)
-                                           (generator context (:elements-model model))
-                                           gen/any)]
-                   (cond->> (if (contains? model :count-model)
-                              (gen/bind (generator context (:count-model model))
-                                        (fn [num-elements]
-                                          (gen/set element-generator {:num-elements num-elements})))
-                              (gen/set element-generator))
-                     (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model)))))
-
-         ;; TODO: avoid choosing optional keys that cannot be generated.
-         ;; TODO: avoid optional entries when running out of budget.
-         (:map-of :map) (cond->> (if (contains? model :entries)
-                                   (gen/bind (gen/vector gen/boolean (count (:entries model)))
-                                             (fn [random-bools]
-                                               (->> (map (fn [entry included?]
-                                                           (when (or (not (:optional entry)) included?)
-                                                             [(:key entry) (generator context (:model entry))]))
-                                                         (:entries model) random-bools)
-                                                    (filter some?)
-                                                    (apply concat)
-                                                    (apply gen/hash-map))))
-                                   ;; Maybe consider supporting :count-model for generators
-                                   (gen/map (generator context (-> model :keys :model))
-                                            (generator context (-> model :values :model))))
-                          (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model))))
-
-         (:sequence-of :sequence) (cond->> (gen/bind gen/boolean
-                                                     (fn [random-bool]
-                                                       (let [gen (if (contains? model :entries)
-                                                                   (apply gen/tuple (map (fn [entry]
-                                                                                           (generator context (:model entry)))
-                                                                                         (:entries model)))
-                                                                   (let [elements-gen (generator context (:elements-model model))]
-                                                                     (if (contains? model :count-model)
-                                                                       (gen/bind (generator context (:count-model model))
-                                                                                 (fn [count] (gen/vector elements-gen count)))
-                                                                       (gen/vector elements-gen))))]
-                                                         (let [inside-list? (case (:coll-type model)
-                                                                              :list true
-                                                                              :vector false
-                                                                              random-bool)]
-                                                           (cond->> gen
-                                                             inside-list? (gen/fmap (partial apply list)))))))
-                                    (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model))))
-
-         (:cat :repeat) (cond->> (gen/bind gen/boolean
-                                           (fn [random-bool]
-                                             (let [gen (sequence-generator context model)]
-                                               (let [inside-list? (case (:coll-type model)
-                                                                    :list true
-                                                                    :vector false
-                                                                    random-bool)]
-                                                 (cond->> gen
-                                                   inside-list? (gen/fmap (partial apply list)))))))
-                                 (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model))))
-
-         :let (generator (merge context (:bindings model)) (:body model))
-
-         ;; TODO: solve the scary possible infinite recursion problems
-         :ref (generator context (get context (:key model)))))))
-
+   (gen model {}))
+  ([model options]
+   (let [visitor (fn [model stack path]
+                   (-> model
+                       (assoc-leaf-distance-visitor stack path)
+                       (assoc-min-cost-visitor stack path)))
+         walker (fn [model]
+                  (postwalk model visitor))
+         walked-model (util/iterate-while-different walker model 100)]
+         ;options (into {:max-leaf-distance 20} options)]
+     (if (contains? options :budget)
+       (generator {} walked-model options)
+       (gen/sized (fn [size]
+                    (generator {} model (assoc options
+                                          ; (* size 10) varies between 0 and 2000
+                                          :budget (* size 10)))))))))

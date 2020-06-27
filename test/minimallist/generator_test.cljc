@@ -1,10 +1,10 @@
 (ns minimallist.generator-test
   (:require [clojure.test :refer [deftest testing is are]]
-            [clojure.test.check.generators :as gen]
+            [clojure.test.check.generators :as tcg]
             [minimallist.core :refer [valid?]]
             [minimallist.helper :as h]
             [minimallist.util :as util]
-            [minimallist.generator :refer [generator] :as g]))
+            [minimallist.generator :refer [gen] :as mg]))
 
 (defn- path-test-visitor []
   ;; Testing using side effects.
@@ -19,7 +19,7 @@
 (deftest postwalk-visit-order-test
   (are [model expected-paths]
     (let [visitor (path-test-visitor)]
-      (#'g/postwalk model visitor)  ; Create side effects
+      (mg/postwalk model visitor)   ; Create side effects
       (= (visitor) expected-paths)) ; Collect and compare the side effects
 
     (h/let ['leaf (h/fn int?)
@@ -79,12 +79,12 @@
 (deftest assoc-leaf-distance-visitor-test
   (are [model expected-walked-model]
     (= (-> model
-           (g/postwalk g/assoc-leaf-distance-visitor)
+           (mg/postwalk mg/assoc-leaf-distance-visitor)
            (util/walk-map-dissoc :fn))
        expected-walked-model)
 
     ; Recursive data-structure impossible to generate
-    ; This one is trying to bring the function generator in an infinite loop.
+    ; This one is trying to bring the generator function in an infinite loop.
     (h/let ['loop (h/ref 'loop)]
            (h/ref 'loop))
     {:type :let
@@ -99,13 +99,13 @@
            (h/ref 'tree))
     {:type :let
      :bindings {'leaf {:type :fn
-                       ::g/leaf-distance 0}
+                       ::mg/leaf-distance 0}
                 'tree {:type :sequence
                        :entries [{:model {:type :ref
                                           :key 'tree}}
                                  {:model {:type :ref
                                           :key 'leaf
-                                          ::g/leaf-distance 1}}]}}
+                                          ::mg/leaf-distance 1}}]}}
      :body {:type :ref
             :key 'tree}}
 
@@ -117,7 +117,7 @@
      :bindings {'rec-map {:type :map
                           :entries [{:key :a
                                      :model {:type :fn
-                                             ::g/leaf-distance 0}}
+                                             ::mg/leaf-distance 0}}
                                     {:key :b
                                      :model {:type :ref
                                              :key 'rec-map}}]}}
@@ -130,18 +130,18 @@
            (h/ref 'tree))
     {:type :let
      :bindings {'leaf {:type :fn
-                       ::g/leaf-distance 0}
+                       ::mg/leaf-distance 0}
                 'tree {:type :alt
                        :entries [{:model {:type :ref
                                           :key 'tree}}
                                  {:model {:type :ref
                                           :key 'leaf
-                                          ::g/leaf-distance 1}}]
-                       ::g/leaf-distance 2}}
+                                          ::mg/leaf-distance 1}}]
+                       ::mg/leaf-distance 2}}
      :body {:type :ref
             :key 'tree
-            ::g/leaf-distance 3}
-     ::g/leaf-distance 4}
+            ::mg/leaf-distance 3}
+     ::mg/leaf-distance 4}
 
     (h/let ['rec-map (h/map [:a (h/fn int?)]
                             [:b {:optional true} (h/ref 'rec-map)])]
@@ -150,16 +150,16 @@
      :bindings {'rec-map {:type :map
                           :entries [{:key :a
                                      :model {:type :fn
-                                             ::g/leaf-distance 0}}
+                                             ::mg/leaf-distance 0}}
                                     {:key :b
                                      :optional true
                                      :model {:type :ref
                                              :key 'rec-map}}]
-                          ::g/leaf-distance 1}}
+                          ::mg/leaf-distance 1}}
      :body {:type :ref
             :key 'rec-map
-            ::g/leaf-distance 2}
-     ::g/leaf-distance 3}
+            ::mg/leaf-distance 2}
+     ::mg/leaf-distance 3}
 
     #__))
 
@@ -167,74 +167,74 @@
 (deftest assoc-min-cost-visitor-test
   (are [model expected-walked-model]
     (= (-> model
-           (g/postwalk g/assoc-min-cost-visitor)
+           (mg/postwalk mg/assoc-min-cost-visitor)
            (util/walk-map-dissoc :fn))
        expected-walked-model)
 
     (h/tuple (h/fn int?) (h/fn string?))
     {:type :sequence
      :entries [{:model {:type :fn
-                        ::g/min-cost 1}}
+                        ::mg/min-cost 1}}
                {:model {:type :fn
-                        ::g/min-cost 1}}]
-     ::g/min-cost 3}
+                        ::mg/min-cost 1}}]
+     ::mg/min-cost 3}
 
     (h/cat (h/fn int?) (h/fn string?))
     {:type :cat
      :entries [{:model {:type :fn
-                        ::g/min-cost 1}}
+                        ::mg/min-cost 1}}
                {:model {:type :fn
-                        ::g/min-cost 1}}]
-     ::g/min-cost 2}
+                        ::mg/min-cost 1}}]
+     ::mg/min-cost 2}
 
     (h/in-vector (h/cat (h/fn int?) (h/fn string?)))
     {:type :cat
      :coll-type :vector
      :entries [{:model {:type :fn
-                        ::g/min-cost 1}}
+                        ::mg/min-cost 1}}
                {:model {:type :fn
-                        ::g/min-cost 1}}]
-     ::g/min-cost 3}
+                        ::mg/min-cost 1}}]
+     ::mg/min-cost 3}
 
     (h/not-inlined (h/cat (h/fn int?) (h/fn string?)))
     {:type :cat
      :inlined false
      :entries [{:model {:type :fn
-                        ::g/min-cost 1}}
+                        ::mg/min-cost 1}}
                {:model {:type :fn
-                        ::g/min-cost 1}}]
-     ::g/min-cost 3}
+                        ::mg/min-cost 1}}]
+     ::mg/min-cost 3}
 
     (h/map [:a (h/fn int?)]
            [:b {:optional true} (h/fn int?)])
     {:type :map
      :entries [{:key :a
                 :model {:type :fn
-                        ::g/min-cost 1}}
+                        ::mg/min-cost 1}}
                {:key :b
                 :optional true
                 :model {:type :fn
-                        ::g/min-cost 1}}]
-     ::g/min-cost 2}
+                        ::mg/min-cost 1}}]
+     ::mg/min-cost 2}
 
     (h/map-of (h/fn keyword?) (h/fn int?))
     {:type :map-of
      :keys {:model {:type :fn
-                    ::g/min-cost 1}}
+                    ::mg/min-cost 1}}
      :values {:model {:type :fn
-                      ::g/min-cost 1}}
-     ::g/min-cost 0}
+                      ::mg/min-cost 1}}
+     ::mg/min-cost 0}
 
     (-> (h/map-of (h/fn keyword?) (h/fn int?))
         (h/with-count (h/enum #{3 4})))
     {:type :map-of
      :keys {:model {:type :fn
-                    ::g/min-cost 1}}
+                    ::mg/min-cost 1}}
      :values {:model {:type :fn
-                      ::g/min-cost 1}}
+                      ::mg/min-cost 1}}
      :count-model {:type :enum
                    :values #{3 4}}
-     ::g/min-cost 7}
+     ::mg/min-cost 7}
 
     (h/let ['foo (-> (h/set-of (h/fn int?))
                      (h/with-count (h/val 3)))]
@@ -244,12 +244,12 @@
                       :count-model {:type :enum
                                     :values #{3}}
                       :elements-model {:type :fn
-                                       ::g/min-cost 1}
-                      ::g/min-cost 4}}
+                                       ::mg/min-cost 1}
+                      ::mg/min-cost 4}}
      :body {:type :ref
             :key 'foo
-            ::g/min-cost 4}
-     ::g/min-cost 4}
+            ::mg/min-cost 4}
+     ::mg/min-cost 4}
 
     #__))
 
@@ -258,124 +258,129 @@
   ;; Nothing replaces occasional hand testing
 
   (def fn-int? (-> (h/fn int?)
-                   (h/with-test-check-gen gen/nat)))
+                   (h/with-test-check-gen tcg/nat)))
 
   (def fn-string? (-> (h/fn string?)
-                      (h/with-test-check-gen gen/string-alphanumeric)))
+                      (h/with-test-check-gen tcg/string-alphanumeric)))
 
-  (gen/sample (generator (-> (h/set)
-                             (h/with-count (h/enum #{1 2 3 10}))
-                             (h/with-condition (h/fn (comp #{1 2 3} count))))))
+  (tcg/sample (gen (-> (h/set)
+                       (h/with-count (h/enum #{1 2 3 10}))
+                       (h/with-condition (h/fn (comp #{1 2 3} count))))))
 
-  (gen/sample (generator (h/map-of fn-int? fn-string?)))
+  (tcg/sample (gen (h/map-of fn-int? fn-string?)))
 
-  (gen/sample (generator (-> (h/map [:a fn-int?])
-                             (h/with-optional-entries [:b fn-string?]))))
+  (tcg/sample (gen (-> (h/map [:a fn-int?])
+                       (h/with-optional-entries [:b fn-string?]))))
 
-  (gen/sample (generator (h/sequence-of fn-int?)))
+  (tcg/sample (gen (h/sequence-of fn-int?)))
 
-  (gen/sample (generator (h/cat fn-int? fn-string?)))
+  (tcg/sample (gen (h/cat fn-int? fn-string?)))
 
-  (gen/sample (generator (h/repeat 2 3 fn-int?)))
+  (tcg/sample (gen (h/repeat 2 3 fn-int?)))
 
-  (gen/sample (generator (h/repeat 2 3 (h/cat fn-int? fn-string?))))
+  (tcg/sample (gen (h/repeat 2 3 (h/cat fn-int? fn-string?))))
 
-  (gen/sample (generator (h/let ['int? fn-int?
-                                 'string? fn-string?
-                                 'int-string? (h/cat (h/ref 'int?) (h/ref 'string?))]
-                                (h/repeat 2 3 (h/ref 'int-string?))))))
+  (tcg/sample (gen (h/let ['int? fn-int?
+                           'string? fn-string?
+                           'int-string? (h/cat (h/ref 'int?) (h/ref 'string?))]
+                          (h/repeat 2 3 (h/ref 'int-string?))))))
 
-(deftest generator-test
+(deftest gen-test
 
-  (let [fn-int? (-> (h/fn int?) (h/with-test-check-gen gen/nat))
-        fn-string? (-> (h/fn string?) (h/with-test-check-gen gen/string-alphanumeric))]
+  (let [fn-int? (-> (h/fn int?) (h/with-test-check-gen tcg/nat))
+        fn-string? (-> (h/fn string?) (h/with-test-check-gen tcg/string-alphanumeric))]
 
     (let [model fn-string?]
       (is (every? (partial valid? model)
-                  (gen/sample (generator model)))))
+                  (tcg/sample (gen model)))))
 
     (let [model (h/enum #{:1 2 "3"})]
       (is (every? (partial valid? model)
-                  (gen/sample (generator model)))))
+                  (tcg/sample (gen model)))))
 
     (let [model (-> (h/set-of fn-int?)
                     (h/with-condition (h/fn (partial some odd?))))]
       (is (every? (partial valid? model)
-                  (gen/sample (generator model)))))
+                  (tcg/sample (gen model)))))
 
     (let [model (-> (h/set)
                     (h/with-count (h/enum #{1 2 3 10}))
                     (h/with-condition (h/fn (comp #{1 2 3} count))))]
       (is (every? (partial valid? model)
-                  (gen/sample (generator model)))))
+                  (tcg/sample (gen model)))))
 
     (let [model (h/map-of fn-int? fn-string?)]
       (is (every? (partial valid? model)
-                  (gen/sample (generator model)))))
+                  (tcg/sample (gen model)))))
 
     (let [model (-> (h/map [:a fn-int?])
                     (h/with-optional-entries [:b fn-string?]))
-          sample (gen/sample (generator model) 100)]
+          sample (tcg/sample (gen model) 100)]
       (is (and (every? (partial valid? model) sample)
                (some (fn [element] (contains? element :b)) sample)
                (some (fn [element] (not (contains? element :b))) sample))))
 
     (let [model (h/sequence-of fn-int?)]
       (is (every? (partial valid? model)
-                  (gen/sample (generator model)))))
+                  (tcg/sample (gen model)))))
 
     (let [model (h/tuple fn-int? fn-string?)
-          sample (gen/sample (generator model) 100)]
+          sample (tcg/sample (gen model) 100)]
       (is (and (every? (partial valid? model) sample)
                (some list? sample)
                (some vector? sample))))
 
     (let [model (h/vector fn-int? fn-string?)
-          sample (gen/sample (generator model))]
+          sample (tcg/sample (gen model))]
       (is (and (every? (partial valid? model) sample)
                (every? vector? sample))))
 
     (let [model (h/list fn-int? fn-string?)
-          sample (gen/sample (generator model))]
+          sample (tcg/sample (gen model))]
       (is (and (every? (partial valid? model) sample)
                (every? list? sample))))
 
     (let [model (h/alt fn-int? fn-string?)]
       (is (every? (partial valid? model)
-                  (gen/sample (generator model)))))
+                  (tcg/sample (gen model)))))
 
     (let [model (h/cat fn-int? fn-string?)]
       (is (every? (partial valid? model)
-                  (gen/sample (generator model)))))
+                  (tcg/sample (gen model)))))
 
     (let [model (h/repeat 2 3 fn-int?)]
       (is (every? (partial valid? model)
-                  (gen/sample (generator model)))))
+                  (tcg/sample (gen model)))))
 
     (let [model (h/repeat 2 3 (h/cat fn-int? fn-string?))]
       (is (every? (partial valid? model)
-                  (gen/sample (generator model)))))
+                  (tcg/sample (gen model)))))
 
     (let [model (h/let ['int? fn-int?
                         'string? fn-string?
                         'int-string? (h/cat (h/ref 'int?) (h/ref 'string?))]
                   (h/repeat 2 3 (h/ref 'int-string?)))]
       (is (every? (partial valid? model)
-                  (gen/sample (generator model)))))))
+                  (tcg/sample (gen model)))))))
 
-    ;;; TODO: limit the size of recursive models
-    ;
-    ;;; Budget-based limit on model choice.
+    ;; Budget-based limit on model choice.
     ;(let [model (h/let ['tree (h/alt [:leaf fn-int?]
     ;                                 [:branch (h/vector (h/ref 'tree)
     ;                                                    (h/ref 'tree))])]
-    ;
     ;              (h/ref 'tree))]
     ;  (is (every? (partial valid? model)
-    ;              (gen/sample (generator model)))))
-    ;
+    ;              (tcg/sample (gen model)))))))
+
     ;;; Budget-based limit on variable collection size.
     ;(let [model (h/let ['node (h/vector-of (h/ref 'node))]
     ;              (h/ref 'node))]
     ;  (is (every? (partial valid? model)
-    ;              (gen/sample (generator model)))))))
+    ;              (tcg/sample (gen model)))))))
+
+#_(util/iterate-while-different (fn [model]
+                                  (mg/postwalk model mg/assoc-leaf-distance-visitor))
+                                (h/let ['tree (h/alt [:leaf (h/fn int?)]
+                                                     [:branch (h/vector (h/ref 'tree)
+                                                                        (h/ref 'tree))])]
+                                       (h/ref 'tree))
+                                20)
