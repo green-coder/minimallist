@@ -5,6 +5,7 @@ A minimalist data driven data model library, inspired by [Clojure Spec](https://
 
 [![Clojars Project](https://img.shields.io/clojars/v/minimallist.svg)](https://clojars.org/minimallist)
 [![cljdoc badge](https://cljdoc.org/badge/minimallist/minimallist)](https://cljdoc.org/d/minimallist/minimallist/CURRENT)
+[![project chat](https://img.shields.io/badge/slack-join_chat-brightgreen.svg)](https://clojurians.slack.com/archives/C012HUX1VPC)
 
 ## Features
 
