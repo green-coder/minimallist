@@ -253,6 +253,27 @@
 
     #__))
 
+(deftest preferably-such-that-test
+  (is (every? #{0 1 2}
+              (-> (#'mg/preferably-such-that #{0 1 2} (tcg/choose 0 5))
+                  tcg/sample)))
+  (is (every? #(<= 10 % 15)
+              (-> (#'mg/preferably-such-that #{0 1 2} (tcg/choose 10 15))
+                  tcg/sample))))
+
+(deftest budget-split
+  (is (every? (fn [[a b c]]
+                (and (<= 0 a 5)
+                     (<= 5 b 10)
+                     (<= 10 c 15)))
+              (-> (#'mg/budget-split 20.0 [0 5 10])
+                  tcg/sample)))
+  (is (every? #(= % [5 10 10])
+              (-> (#'mg/budget-split 20.0 [5 10 10])
+                  tcg/sample)))
+  (is (every? empty?
+              (-> (#'mg/budget-split 10.0 [])
+                  tcg/sample))))
 
 (comment
   ;; Nothing replaces occasional hand testing

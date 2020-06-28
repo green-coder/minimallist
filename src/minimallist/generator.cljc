@@ -1,7 +1,9 @@
 (ns minimallist.generator
   (:require [minimallist.core :refer [valid?]]
             [minimallist.util :refer [reduce-update reduce-update-in reduce-mapv] :as util]
-            [clojure.test.check.generators :as gen]))
+            [clojure.test.check.generators :as gen]
+            [clojure.test.check.rose-tree :as rose]
+            [clojure.test.check.random :as random]))
 
 
 (defn- find-stack-index [stack key]
@@ -153,61 +155,39 @@
       (some? min-cost) (assoc ::min-cost min-cost))))
 
 
-;; Temporally move this here, will be used later
-(comment
+(defn- preferably-such-that
+  "A generator that tries to generate values satisfying a given predicate,
+   but won't throw an tantrum if it can't."
+  ([pred gen]
+   (preferably-such-that pred gen 10))
+  ([pred gen max-tries]
+   (#'gen/make-gen (fn [rng size]
+                     (loop [tries-left max-tries
+                            rng rng
+                            size size]
+                       (if (zero? tries-left)
+                         (gen/call-gen gen rng size)
+                         (let [[r1 r2] (random/split rng)
+                               value (gen/call-gen gen r1 size)]
+                           (if (pred (rose/root value))
+                             (rose/filter pred value)
+                             (recur (dec tries-left) r2 (inc size))))))))))
 
-  (defn abs [x]
-    (max x (- x)))
-
-  (defn nextPosGaussianDouble
-    "Positive double number from a normal distribution of mean 0 and standard deviation of 1."
-    ([rgen] (abs (.nextGaussian rgen))))
-
-  (defn nextPosGaussianInt
-    ([rgen sup]
-     (let [max (dec sup)]
-       (-> (nextPosGaussianDouble rgen)
-           (/ 3.0) ;; values are rarely over 3.0
-           (* max)
-           (int)
-           (clojure.core/min max))))
-    ([rgen min sup]
-     (-> (nextPosGaussianInt rgen (- sup min))
-         (+ min))))
-
-  (sort > (repeatedly 20 #(nextPosGaussianInt (random-generator) 100)))
-
-  (defn n-split [rgen sum n-parts]
-    (case n-parts
-      0 []
-      1 [sum]
-      (let [parts (repeatedly n-parts #(nextPosGaussianDouble rgen))
-            factor (/ sum (reduce + parts))]
-        (into [] (map (fn [x]
-                        (-> x (* factor) (int))))
-              parts))))
-
-  ;; Note:
-  ;; - This distribution is more unbalanced,
-  ;; - big numbers are more likely to be in front.
-  (defn n-split-weird [rgen sum n-parts]
-    (if (zero? n-parts)
-      []
-      (loop [n n-parts
-             sum sum
-             result []]
-        (if (= n 1)
-          (conj result sum)
-          (let [part (nextPosGaussianInt rgen sum)]
-            (recur (dec n)
-                   (- sum part)
-                   (conj result part)))))))
-
-  (n-split (random-generator) 100 10)
-  (n-split-weird (random-generator) 100 10))
-
-
-
+(defn- budget-split
+  "Returns a generator which generates budget splits."
+  [budget min-costs]
+  (if (seq min-costs)
+    (let [nb-elements (count min-costs)
+          min-costs-sum (reduce + min-costs)
+          budget-minus-min-costs (max 0 (- budget min-costs-sum))]
+      (gen/fmap (fn [rates]
+                  (let [budget-factor (/ budget-minus-min-costs (reduce + rates))]
+                    (mapv (fn [min-cost rate]
+                            (+ min-cost (* rate budget-factor)))
+                          min-costs
+                          rates)))
+                (gen/vector (gen/choose 1 100) nb-elements)))
+    (gen/return [])))
 
 
 ;; TODO: What if ... conditions could only exist as something else's :condition-model?
