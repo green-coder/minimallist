@@ -114,20 +114,26 @@
   (let [type (:type model)
         min-cost (case type
                    (:fn :enum) (::min-cost model 1)
-                   :map-of (let [min-count (min-count-value model)
+                   :map-of (let [container-cost 1
+                                 min-count (min-count-value model)
                                  key-min-cost (-> model :keys :model ::min-cost)
-                                 value-min-cost (-> model :values :model ::min-cost)]
-                             (if (zero? min-count) 0
-                               (when (and min-count key-min-cost value-min-cost)
-                                 (inc (* min-count (+ key-min-cost value-min-cost))))))
+                                 value-min-cost (-> model :values :model ::min-cost)
+                                 content-cost (if (zero? min-count) 0
+                                                (when (and min-count key-min-cost value-min-cost)
+                                                  (* min-count (+ key-min-cost value-min-cost))))]
+                             (some-> content-cost (+ container-cost)))
                    (:set-of
                     :sequence-of
-                    :repeat) (let [min-count (min-count-value model)
-                                   elements-model-min-cost (-> model :elements-model ::min-cost)]
-                               (if (zero? min-count) 0
-                                 (when (and min-count elements-model-min-cost)
-                                   (cond-> (* elements-model-min-cost min-count)
-                                     (#{:set-of :sequence-of} type) inc))))
+                    :repeat) (let [container-cost (if (#{:set-of :sequence-of} type) 1 0)
+                                   min-count (min-count-value model)
+                                   elements-model (:elements-model model)
+                                   elements-model-min-cost (if elements-model
+                                                             (::min-cost elements-model)
+                                                             1) ; the elements could be anything
+                                   content-cost (if (zero? min-count) 0
+                                                  (when (and min-count elements-model-min-cost)
+                                                    (* elements-model-min-cost min-count)))]
+                               (some-> content-cost (+ container-cost)))
                    (:or
                     :alt) (let [existing-vals (->> (:entries model)
                                                    (map (comp ::min-cost :model))
@@ -139,14 +145,15 @@
                             (reduce max vals)))
                    (:map
                     :sequence
-                    :cat) (let [vals (->> (:entries model)
+                    :cat) (let [container-cost (if (or (#{:map :sequence} type)
+                                                       (:coll-type model)
+                                                       (not (:inlined model true)))
+                                                 1 0)
+                                vals (->> (:entries model)
                                           (remove :optional)
-                                          (map (comp ::min-cost :model)))]
-                            (when (every? some? vals)
-                              (cond-> (reduce + vals)
-                                (or (#{:map :sequence} type)
-                                    (:coll-type model)
-                                    (not (:inlined model true))) inc)))
+                                          (map (comp ::min-cost :model)))
+                                content-cost (when (every? some? vals) (reduce + vals))]
+                            (some-> content-cost (+ container-cost)))
                    :let (::min-cost (:body model))
                    :ref (let [key (:key model)
                               index (find-stack-index stack key)]

@@ -223,7 +223,7 @@
                     ::mg/min-cost 1}}
      :values {:model {:type :fn
                       ::mg/min-cost 1}}
-     ::mg/min-cost 0}
+     ::mg/min-cost 1}
 
     (-> (h/map-of (h/fn keyword?) (h/fn int?))
         (h/with-count (h/enum #{3 4})))
@@ -235,6 +235,17 @@
      :count-model {:type :enum
                    :values #{3 4}}
      ::mg/min-cost 7}
+
+    (h/set)
+    {:type :set-of
+     ::mg/min-cost 1}
+
+    (-> (h/set)
+        (h/with-count (h/val 3)))
+    {:type :set-of
+     :count-model {:type :enum
+                   :values #{3}}
+     ::mg/min-cost 4}
 
     (h/let ['foo (-> (h/set-of (h/fn int?))
                      (h/with-count (h/val 3)))]
