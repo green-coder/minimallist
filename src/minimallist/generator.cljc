@@ -180,6 +180,22 @@
                              (rose/filter pred value)
                              (recur (dec tries-left) r2 (inc size))))))))))
 
+(defn- decreasing-sizes-generator
+  "Returns a generator of lazy sequence of decreasing sizes."
+  [max-size]
+  (#'gen/make-gen
+    (fn [rng _]
+      (let [f (fn f [rng max-size]
+                (if (neg? max-size)
+                  nil
+                  (lazy-seq
+                    (let [[r1 r2] (random/split rng)
+                          size (#'gen/rand-range r1 0 max-size)]
+                      (cons size (f r2 (dec size)))))))]
+        (rose/pure (f rng max-size))))))
+
+#_(gen/sample (decreasing-sizes-generator 100))
+
 (defn- budget-split
   "Returns a generator which generates budget splits."
   [budget min-costs]
