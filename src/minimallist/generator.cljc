@@ -226,10 +226,16 @@
            (:inlined model true))
     (or (:test.check/generator model)
         (case (:type model)
-          ;; TODO: avoid choosing a model that cannot be generated.
-          ;; TODO: choose specific ones when running out of budget.
-          :alt (gen/let [entry (gen/elements (:entries model))]
-                 (sequence-generator context (:model entry) budget))
+          :alt (let [possible-entries (filterv (comp ::leaf-distance :model)
+                                               (:entries model))
+                     affordable-entries (filterv (fn [entry] (<= (-> entry :model ::min-cost) budget))
+                                                 possible-entries)]
+                 (if (seq affordable-entries)
+                   (gen/let [index (gen/choose 0 (dec (count affordable-entries)))]
+                     (sequence-generator context (:model (affordable-entries index)) budget))
+                   (let [chosen-entry (first (sort-by (comp ::min-cost :model) possible-entries))]
+                     (sequence-generator context (:model chosen-entry) budget))))
+
           :cat (->> (apply gen/tuple (mapv (fn [entry]
                                              (sequence-generator context (:model entry) budget))
                                            (:entries model)))
@@ -255,11 +261,15 @@
 
         (:and :or) nil ;; a generator is supposed to be provided for those nodes
 
-        ;; TODO: avoid choosing a model that cannot be generated.
-        ;; TODO: choose specific ones when running out of budget.
-        :alt (let [entries (:entries model)]
-               (gen/let [index (gen/choose 0 (dec (count entries)))]
-                 (generator context (:model (entries index)) budget)))
+        :alt (let [possible-entries (filterv (comp ::leaf-distance :model)
+                                             (:entries model))
+                   affordable-entries (filterv (fn [entry] (<= (-> entry :model ::min-cost) budget))
+                                               possible-entries)]
+               (if (seq affordable-entries)
+                 (gen/let [index (gen/choose 0 (dec (count affordable-entries)))]
+                   (generator context (:model (affordable-entries index)) budget))
+                 (let [chosen-entry (first (sort-by (comp ::min-cost :model) possible-entries))]
+                   (generator context (:model chosen-entry) budget))))
 
         ;; TODO: choose a count according to the budget when :count-model is not specified.
         ;; Problem: we don't know how to pick a small value when :count-model is specified.
@@ -328,8 +338,8 @@
 (defn gen
   "Returns a test.check generator derived from the model."
   ([model]
-   (gen model {}))
-  ([model options]
+   (gen model nil))
+  ([model budget]
    (let [visitor (fn [model stack path]
                    (-> model
                        (assoc-leaf-distance-visitor stack path)
@@ -337,10 +347,7 @@
          walker (fn [model]
                   (postwalk model visitor))
          walked-model (util/iterate-while-different walker model 100)]
-         ;options (into {:max-leaf-distance 20} options)]
-     (if (contains? options :budget)
-       (generator {} walked-model options)
-       (gen/sized (fn [size]
-                    (generator {} model (assoc options
-                                          ; (* size 10) varies between 0 and 2000
-                                          :budget (* size 10)))))))))
+     (if budget
+       (generator {} walked-model budget)
+       (gen/sized (fn [size] ; size varies between 0 and 200
+                    (generator {} walked-model size)))))))
