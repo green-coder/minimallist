@@ -272,18 +272,18 @@
               (-> (#'mg/preferably-such-that #{0 1 2} (tcg/choose 10 15))
                   tcg/sample))))
 
-(deftest budget-split
+(deftest budget-split-gen-test
   (is (every? (fn [[a b c]]
                 (and (<= 0 a 5)
                      (<= 5 b 10)
                      (<= 10 c 15)))
-              (-> (#'mg/budget-split 20.0 [0 5 10])
+              (-> (#'mg/budget-split-gen 20.0 [0 5 10])
                   tcg/sample)))
   (is (every? #(= % [5 10 10])
-              (-> (#'mg/budget-split 20.0 [5 10 10])
+              (-> (#'mg/budget-split-gen 20.0 [5 10 10])
                   tcg/sample)))
   (is (every? empty?
-              (-> (#'mg/budget-split 10.0 [])
+              (-> (#'mg/budget-split-gen 10.0 [])
                   tcg/sample))))
 
 (comment
@@ -315,7 +315,19 @@
   (tcg/sample (gen (h/let ['int? fn-int?
                            'string? fn-string?
                            'int-string? (h/cat (h/ref 'int?) (h/ref 'string?))]
-                          (h/repeat 2 3 (h/ref 'int-string?))))))
+                          (h/repeat 2 3 (h/ref 'int-string?)))))
+
+  (tcg/sample (gen (-> (h/set-of fn-int?)
+                       (h/with-condition (h/fn (fn [coll]
+                                                 (or (empty? coll)
+                                                     (some even? coll))))))))
+
+  (tcg/sample (gen (-> (h/set)
+                       (h/with-count (h/enum #{1 2 3 10}))
+                       (h/with-condition (h/fn (comp #{1 2 3} count))))))
+
+  (tcg/sample (gen (h/let ['node (h/set-of (h/ref 'node))]
+                          (h/ref 'node)))))
 
 (deftest gen-test
 
@@ -331,7 +343,9 @@
                   (tcg/sample (gen model)))))
 
     (let [model (-> (h/set-of fn-int?)
-                    (h/with-condition (h/fn (partial some odd?))))]
+                    (h/with-condition (h/fn (fn [coll]
+                                              (or (empty? coll)
+                                                  (some even? coll))))))]
       (is (every? (partial valid? model)
                   (tcg/sample (gen model)))))
 
@@ -393,15 +407,21 @@
                         'int-string? (h/cat (h/ref 'int?) (h/ref 'string?))]
                   (h/repeat 2 3 (h/ref 'int-string?)))]
       (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))))
+                  (tcg/sample (gen model)))))
 
     ;; Budget-based limit on model choice.
-    ;(let [model (h/let ['tree (h/alt [:leaf fn-int?]
-    ;                                 [:branch (h/vector (h/ref 'tree)
-    ;                                                    (h/ref 'tree))])]
-    ;              (h/ref 'tree))]
-    ;  (is (every? (partial valid? model)
-    ;              (tcg/sample (gen model)))))))
+    (let [model (h/let ['tree (h/alt [:leaf fn-int?]
+                                     [:branch (h/vector (h/ref 'tree)
+                                                        (h/ref 'tree))])]
+                  (h/ref 'tree))]
+      (is (every? (partial valid? model)
+                  (tcg/sample (gen model)))))
+
+    ;; Budget-based limit on variable set size.
+    (let [model (h/let ['node (h/set-of (h/ref 'node))]
+                  (h/ref 'node))]
+      (is (every? (partial valid? model)
+                  (tcg/sample (gen model)))))))
 
     ;;; Budget-based limit on variable collection size.
     ;(let [model (h/let ['node (h/vector-of (h/ref 'node))]

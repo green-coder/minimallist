@@ -180,23 +180,22 @@
                              (rose/filter pred value)
                              (recur (dec tries-left) r2 (inc size))))))))))
 
-(defn- decreasing-sizes-generator
+(defn- decreasing-sizes-gen
   "Returns a generator of lazy sequence of decreasing sizes."
   [max-size]
   (#'gen/make-gen
     (fn [rng _]
       (let [f (fn f [rng max-size]
-                (if (neg? max-size)
-                  nil
+                (when-not (neg? max-size)
                   (lazy-seq
                     (let [[r1 r2] (random/split rng)
                           size (#'gen/rand-range r1 0 max-size)]
                       (cons size (f r2 (dec size)))))))]
         (rose/pure (f rng max-size))))))
 
-#_(gen/sample (decreasing-sizes-generator 100))
+#_(gen/sample (decreasing-sizes-gen 100) 1)
 
-(defn- budget-split
+(defn- budget-split-gen
   "Returns a generator which generates budget splits."
   [budget min-costs]
   (if (seq min-costs)
@@ -257,6 +256,7 @@
 
         :fn nil ;; a generator is supposed to be provided for those nodes
 
+        ;; TODO: there "might be" an problem a enumeration order from the set.
         :enum (gen/elements (:values model))
 
         (:and :or) nil ;; a generator is supposed to be provided for those nodes
@@ -271,18 +271,46 @@
                  (let [chosen-entry (first (sort-by (comp ::min-cost :model) possible-entries))]
                    (generator context (:model chosen-entry) budget))))
 
-        ;; TODO: choose a count according to the budget when :count-model is not specified.
-        ;; Problem: we don't know how to pick a small value when :count-model is specified.
-        ;;          we could handle the simple case where :count-model is just an enum.
-        :set-of (let [element-generator (if (contains? model :elements-model)
-                                          (generator context (:elements-model model) budget)
-                                          gen/any)]
-                  (cond->> (if (contains? model :count-model)
-                             (gen/bind (generator context (:count-model model) budget)
-                                       (fn [num-elements]
-                                         (gen/set element-generator {:num-elements num-elements})))
-                             (gen/set element-generator))
-                    (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model)))))
+        :set-of (let [budget (max 0 (dec budget)) ; the collection itself costs 1
+                      elements-model (:elements-model model)
+                      count-model (:count-model model)
+                      elm-min-cost (if elements-model
+                                     (::min-cost elements-model)
+                                     1)
+                      coll-sizes-gen (if count-model
+                                       (if (= (:type count-model) :enum)
+                                         (gen/shuffle (sort (:values count-model)))
+                                         (gen/vector-distinct (generator context count-model 0)
+                                                              {:min-elements 1}))
+                                       (decreasing-sizes-gen (int (/ budget elm-min-cost))))
+                      set-gen (gen/bind coll-sizes-gen
+                                        (fn [coll-sizes]
+                                          (#'gen/make-gen
+                                            (fn [rng gen-size]
+                                              (loop [rng rng
+                                                     coll-sizes coll-sizes]
+                                                (when-not (seq coll-sizes)
+                                                  (throw (ex-info "Couldn't generate a set." {:elements-model elements-model
+                                                                                              :coll-sizes coll-sizes})))
+                                                (let [[r1 r2 next-rng] (random/split-n rng 3)
+                                                      coll-size (first coll-sizes)
+                                                      elements-gen (if elements-model
+                                                                     (let [min-costs (repeat coll-size elm-min-cost)
+                                                                           budgets (-> (budget-split-gen budget min-costs)
+                                                                                       (gen/call-gen r1 gen-size)
+                                                                                       (rose/root))]
+                                                                       (apply gen/tuple
+                                                                              (mapv (partial generator context elements-model)
+                                                                                    budgets)))
+                                                                     (gen/vector gen/any coll-size))
+                                                      elements (-> (gen/call-gen elements-gen r2 gen-size)
+                                                                   (rose/root))
+                                                      elements-in-set (into #{} elements)]
+                                                  (if (= (count elements) (count elements-in-set))
+                                                    (rose/pure elements-in-set)
+                                                    (recur next-rng (rest coll-sizes)))))))))]
+                  (cond->> set-gen
+                           (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model)))))
 
         ;; TODO: avoid choosing optional keys that cannot be generated.
         ;; TODO: avoid optional entries when running out of budget.
