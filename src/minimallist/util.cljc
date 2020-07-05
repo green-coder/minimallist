@@ -2,6 +2,15 @@
   (:require [clojure.set :as set]
             [clojure.walk :as walk]))
 
+(defn lazy-map
+  "Similar to the map function, except that it evaluates 1 element at a time."
+  [f & colls]
+  (lazy-seq
+    (let [coll-seqs (mapv seq colls)]
+      (when (every? some? coll-seqs)
+        (cons (apply f (mapv first coll-seqs))
+              (apply lazy-map f (mapv rest coll-seqs)))))))
+
 (defn reduce-update [[acc data] key f & args]
   (let [elm (get data key)
         [updated-acc updated-elm] (apply f acc elm args)
