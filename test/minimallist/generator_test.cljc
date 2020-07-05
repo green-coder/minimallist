@@ -429,10 +429,23 @@
     ;  (is (every? (partial valid? model)
     ;              (tcg/sample (gen model)))))))
 
-#_(util/iterate-while-different (fn [model]
-                                  (mg/postwalk model mg/assoc-leaf-distance-visitor))
-                                (h/let ['tree (h/alt [:leaf (h/fn int?)]
-                                                     [:branch (h/vector (h/ref 'tree)
-                                                                        (h/ref 'tree))])]
-                                       (h/ref 'tree))
-                                20)
+#_(let [model (h/let ['tree (h/alt [:leaf (-> (h/fn int?)
+                                              (h/with-test-check-gen tcg/nat))]
+                                   [:branch (h/vector (h/ref 'tree)
+                                                      (h/ref 'tree))])]
+                     (h/ref 'tree))]
+    (tcg/sample (gen model)))
+
+#_(let [model (h/let ['tree (h/alt [:leaf (-> (h/fn int?)
+                                              (h/with-test-check-gen tcg/nat))]
+                                   [:branch (h/vector (h/ref 'tree)
+                                                      (h/ref 'tree))])]
+                     (h/ref 'tree))
+        visitor (fn [model stack path]
+                  (-> model
+                      (mg/assoc-leaf-distance-visitor stack path)
+                      (mg/assoc-min-cost-visitor stack path)))
+        walker (fn [model]
+                 (mg/postwalk model visitor))
+        walked-model (util/iterate-while-different walker model 100)]
+    walked-model)

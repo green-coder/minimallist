@@ -331,7 +331,11 @@
 
         (:sequence-of :sequence) (cond->> (gen/bind gen/boolean
                                                     (fn [random-bool]
-                                                      (let [gen (if (contains? model :entries)
+                                                      (let [;; TODO: decide how many children, when no count-model is specified.
+                                                            ;; TODO: decide how many children, when count-model is specified.
+                                                            ;; TODO: distribute the budget amongst children.
+                                                            budget (max 0 (dec budget)) ; the collection itself costs 1
+                                                            gen (if (contains? model :entries)
                                                                   (apply gen/tuple (map (fn [entry]
                                                                                           (generator context (:model entry) budget))
                                                                                         (:entries model)))
