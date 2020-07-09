@@ -306,6 +306,8 @@
 
   (tcg/sample (gen (h/sequence-of fn-int?)))
 
+  (tcg/sample (gen (h/tuple fn-int? fn-string?)))
+
   (tcg/sample (gen (h/cat fn-int? fn-string?)))
 
   (tcg/sample (gen (h/repeat 2 3 fn-int?)))
@@ -421,13 +423,13 @@
     (let [model (h/let ['node (h/set-of (h/ref 'node))]
                   (h/ref 'node))]
       (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))))
+                  (tcg/sample (gen model)))))
 
-    ;;; Budget-based limit on variable collection size.
-    ;(let [model (h/let ['node (h/vector-of (h/ref 'node))]
-    ;              (h/ref 'node))]
-    ;  (is (every? (partial valid? model)
-    ;              (tcg/sample (gen model)))))))
+    ;; Budget-based limit on variable collection size.
+    (let [model (h/let ['node (h/vector-of (h/ref 'node))]
+                  (h/ref 'node))]
+      (is (every? (partial valid? model)
+                  (tcg/sample (gen model)))))))
 
 #_(let [model (h/let ['tree (h/alt [:leaf (-> (h/fn int?)
                                               (h/with-test-check-gen tcg/nat))]
