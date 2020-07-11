@@ -329,12 +329,18 @@
                        (h/with-condition (h/fn (comp #{1 2 3} count))))))
 
   (tcg/sample (gen (h/let ['node (h/set-of (h/ref 'node))]
-                          (h/ref 'node)))))
+                          (h/ref 'node))))
+
+  ;; TODO: gen/choose used for coll-sized should not be influenced by test-check's size.
+  ;; TODO: a helper function to work of count-model w.r.t. budget, as it is used in multiple places.
+  (tcg/sample (gen (h/let ['node (h/map-of fn-int? (h/ref 'node))]
+                          (h/ref 'node)) 50)))
 
 (deftest gen-test
 
   (let [fn-int? (-> (h/fn int?) (h/with-test-check-gen tcg/nat))
-        fn-string? (-> (h/fn string?) (h/with-test-check-gen tcg/string-alphanumeric))]
+        fn-string? (-> (h/fn string?) (h/with-test-check-gen tcg/string-alphanumeric))
+        fn-keyword? (-> (h/fn keyword?) (h/with-test-check-gen tcg/keyword))]
 
     (let [model fn-string?]
       (is (every? (partial valid? model)
@@ -425,8 +431,14 @@
       (is (every? (partial valid? model)
                   (tcg/sample (gen model)))))
 
-    ;; Budget-based limit on variable collection size.
+    ;; Budget-based limit on variable sequence size.
     (let [model (h/let ['node (h/vector-of (h/ref 'node))]
+                  (h/ref 'node))]
+      (is (every? (partial valid? model)
+                  (tcg/sample (gen model)))))
+
+    ;; Budget-based limit on variable map size.
+    (let [model (h/let ['node (h/map-of fn-int? (h/ref 'node))]
                   (h/ref 'node))]
       (is (every? (partial valid? model)
                   (tcg/sample (gen model)))))))

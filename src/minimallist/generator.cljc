@@ -310,22 +310,47 @@
                   (cond->> set-gen
                            (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model)))))
 
+        :map-of (cond->> (let [budget (max 0 (dec budget)) ; the collection itself costs 1
+                               count-model (:count-model model)
+                               keys-model (-> model :keys :model)
+                               values-model (-> model :values :model)
+                               entry-min-cost (+ (::min-cost keys-model 1) ;; TODO: is dthe default values needed?
+                                                 (::min-cost values-model 1))
+                               coll-max-size (int (/ budget entry-min-cost))
+                               coll-size-gen (if count-model
+                                               (generator context count-model 0)
+                                               (gen/choose 0 coll-max-size))
+                               budgets-gen (gen/bind coll-size-gen
+                                                     (fn [coll-size]
+                                                       (let [min-costs (repeat coll-size entry-min-cost)]
+                                                         (budget-split-gen budget min-costs))))
+                               entries-gen (gen/bind budgets-gen
+                                                     (fn [entry-budgets]
+                                                       (apply gen/tuple
+                                                              (mapv (fn [entry-budget]
+                                                                      (gen/tuple
+                                                                        (generator context keys-model entry-budget)
+                                                                        (generator context values-model entry-budget)))
+                                                                    entry-budgets))))
+                               map-gen (gen/fmap (fn [entries]
+                                                   (into {} entries))
+                                                 entries-gen)]
+                           (cond->> map-gen
+                             (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model))))))
+
         ;; TODO: avoid choosing optional keys that cannot be generated.
         ;; TODO: avoid optional entries when running out of budget.
-        (:map-of :map) (cond->> (if (contains? model :entries)
-                                  (gen/bind (gen/vector gen/boolean (count (:entries model)))
-                                            (fn [random-bools]
-                                              (->> (map (fn [entry included?]
-                                                          (when (or (not (:optional entry)) included?)
-                                                            [(:key entry) (generator context (:model entry) budget)]))
-                                                        (:entries model) random-bools)
-                                                   (filter some?)
-                                                   (apply concat)
-                                                   (apply gen/hash-map))))
-                                  ;; Maybe consider supporting :count-model for generators
-                                  (gen/map (generator context (-> model :keys :model) budget)
-                                           (generator context (-> model :values :model) budget)))
-                         (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model))))
+        :map (cond->> (if (contains? model :entries)
+                        (gen/bind (gen/vector gen/boolean (count (:entries model)))
+                                  (fn [random-bools]
+                                    (->> (map (fn [entry included?]
+                                                (when (or (not (:optional entry)) included?)
+                                                  [(:key entry) (generator context (:model entry) budget)]))
+                                              (:entries model) random-bools)
+                                         (filter some?)
+                                         (apply concat)
+                                         (apply gen/hash-map)))))
+               (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model))))
 
         (:sequence-of :sequence) (let [budget (max 0 (dec budget)) ; the collection itself costs 1
                                        entries (:entries model)
