@@ -334,13 +334,16 @@
   (tcg/sample (gen (h/let ['node (h/set-of (h/ref 'node))]
                           (h/ref 'node))))
 
-  ;; TODO: gen/choose used for coll-sized should not be influenced by test-check's size.
-  ;; TODO: a helper function to work of count-model w.r.t. budget, as it is used in multiple places.
   (tcg/sample (gen (h/let ['node (h/map-of fn-int? (h/ref 'node))]
                           (h/ref 'node)) 50))
 
   (tcg/sample (gen (h/let ['node (h/map-of fn-keyword? (h/ref 'node))]
-                          (h/ref 'node)) 100) 1))
+                          (h/ref 'node)) 100) 1)
+
+  (tcg/sample (gen (h/map [:a fn-int?])))
+
+  (tcg/sample (gen (-> (h/map [:a fn-int?])
+                       (h/with-optional-entries [:b fn-string?])))))
 
 (deftest gen-test
 
