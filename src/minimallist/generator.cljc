@@ -180,6 +180,18 @@
                              (rose/filter pred value)
                              (recur (dec tries-left) r2 (inc size))))))))))
 
+(defn- rec-coll-size-gen [max-size]
+  (gen/fmap (fn [[x y]]
+              (quot (+ x y) 2))
+            (gen/tuple (gen/choose 0 max-size)
+                       (gen/choose 0 max-size))))
+
+;; Statistics about the distribution
+#_ (->> (gen/sample (rec-coll-size-gen 20) 10000)
+        (frequencies)
+        (sort-by first))
+
+;; maybe, use rec-coll-size-gen to pick up a size at each iteration
 (defn- decreasing-sizes-gen
   "Returns a generator of lazy sequence of decreasing sizes."
   [max-size]
@@ -319,7 +331,7 @@
                                coll-max-size (int (/ budget entry-min-cost))
                                coll-size-gen (if count-model
                                                (generator context count-model 0)
-                                               (gen/choose 0 coll-max-size))
+                                               (rec-coll-size-gen coll-max-size))
                                budgets-gen (gen/bind coll-size-gen
                                                      (fn [coll-size]
                                                        (let [min-costs (repeat coll-size entry-min-cost)]
@@ -370,7 +382,7 @@
                                                         coll-max-size (int (/ budget elm-min-cost))
                                                         coll-size-gen (if count-model
                                                                         (generator context count-model 0)
-                                                                        (gen/choose 0 coll-max-size))]
+                                                                        (rec-coll-size-gen coll-max-size))]
                                                     (if elements-model
                                                       (let [budgets-gen (gen/bind coll-size-gen
                                                                                   (fn [coll-size]
