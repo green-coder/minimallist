@@ -352,14 +352,14 @@
                              (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model))))))
 
         :map (let [budget (max 0 (dec budget)) ; the collection itself costs 1
-                   plausible-entries (filterv (comp ::min-cost :model) (:entries model))
-                   {required-entries false, optional-entries true} (group-by (comp true? :optional) plausible-entries)
+                   possible-entries (filterv (comp ::min-cost :model) (:entries model))
+                   {required-entries false, optional-entries true} (group-by (comp true? :optional) possible-entries)
                    required-min-cost (transduce (map (comp ::min-cost :model)) + required-entries)
                    map-gen (gen/let [coll-size (if (< required-min-cost budget)
-                                                 (gen/choose (count required-entries) (count plausible-entries))
+                                                 (gen/choose (count required-entries) (count possible-entries))
                                                  (gen/return (count required-entries)))
                                      selected-entries (gen/fmap (fn [shuffled-optional-entries]
-                                                                  (->> (concat plausible-entries shuffled-optional-entries)
+                                                                  (->> (concat possible-entries shuffled-optional-entries)
                                                                        (take coll-size)))
                                                                 (gen/shuffle optional-entries))
                                      entry-budgets (let [min-costs (mapv (comp ::min-cost :model) selected-entries)]
@@ -417,32 +417,42 @@
 
         (:cat :repeat) (cond->> (gen/bind gen/boolean
                                           (fn [random-bool]
-                                            (let [gen (sequence-generator context model budget)]
-                                              (let [inside-list? (case (:coll-type model)
-                                                                   :list true
-                                                                   :vector false
-                                                                   random-bool)]
-                                                (cond->> gen
-                                                  inside-list? (gen/fmap (partial apply list)))))))
+                                            (let [budget (max 0 (dec budget)) ; the collection itself costs 1
+                                                  gen (sequence-generator context model budget)
+                                                  inside-list? (case (:coll-type model)
+                                                                 :list true
+                                                                 :vector false
+                                                                 random-bool)]
+                                              (cond->> gen
+                                                inside-list? (gen/fmap (partial apply list))))))
                                 (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model))))
 
         :let (generator (merge context (:bindings model)) (:body model) budget)
 
         :ref (generator context (get context (:key model)) budget))))
 
+(defn decorate-model
+  "Analyzes and decorates the model with information regarding 'distance to leaf' and 'minimal cost'."
+  [model]
+  (let [visitor (fn [model stack path]
+                  (-> model
+                      (assoc-leaf-distance-visitor stack path)
+                      (assoc-min-cost-visitor stack path)))
+        walker (fn [model]
+                 (postwalk model visitor))]
+    (util/iterate-while-different walker model 100)))
+
 (defn gen
   "Returns a test.check generator derived from the model."
   ([model]
    (gen model nil))
   ([model budget]
-   (let [visitor (fn [model stack path]
-                   (-> model
-                       (assoc-leaf-distance-visitor stack path)
-                       (assoc-min-cost-visitor stack path)))
-         walker (fn [model]
-                  (postwalk model visitor))
-         walked-model (util/iterate-while-different walker model 100)]
+   (let [decorated-model (decorate-model model)]
+     (when-not (::min-cost decorated-model)
+       (throw (ex-info "The model cannot be generated as it contains infinite structures that cannot be avoided during generation."
+                       {:model model
+                        :decorated-model decorated-model})))
      (if budget
-       (generator {} walked-model budget)
+       (generator {} decorated-model budget)
        (gen/sized (fn [size] ; size varies between 0 and 200
-                    (generator {} walked-model size)))))))
+                    (generator {} decorated-model size)))))))
