@@ -354,7 +354,10 @@
         :map (let [budget (max 0 (dec budget)) ; the collection itself costs 1
                    plausible-entries (filterv (comp ::min-cost :model) (:entries model))
                    {required-entries false, optional-entries true} (group-by (comp true? :optional) plausible-entries)
-                   map-gen (gen/let [coll-size (gen/choose (count required-entries) (count plausible-entries))
+                   required-min-cost (transduce (map (comp ::min-cost :model)) + required-entries)
+                   map-gen (gen/let [coll-size (if (< required-min-cost budget)
+                                                 (gen/choose (count required-entries) (count plausible-entries))
+                                                 (gen/return (count required-entries)))
                                      selected-entries (gen/fmap (fn [shuffled-optional-entries]
                                                                   (->> (concat plausible-entries shuffled-optional-entries)
                                                                        (take coll-size)))
@@ -368,20 +371,6 @@
                                           entry-budgets)))]
                (cond->> map-gen
                  (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model)))))
-
-        ;;; TODO: avoid choosing optional keys that cannot be generated.
-        ;;; TODO: avoid optional entries when running out of budget.
-        ;:map (cond->> (if (contains? model :entries)
-        ;                (gen/bind (gen/vector gen/boolean (count (:entries model)))
-        ;                          (fn [random-bools]
-        ;                            (->> (map (fn [entry included?]
-        ;                                        (when (or (not (:optional entry)) included?)
-        ;                                          [(:key entry) (generator context (:model entry) budget)]))
-        ;                                      (:entries model) random-bools)
-        ;                                 (filter some?)
-        ;                                 (apply concat)
-        ;                                 (apply gen/hash-map)))))
-        ;       (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model))))
 
         (:sequence-of :sequence) (let [budget (max 0 (dec budget)) ; the collection itself costs 1
                                        entries (:entries model)

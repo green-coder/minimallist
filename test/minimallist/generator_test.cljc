@@ -450,6 +450,15 @@
     (let [model (h/let ['node (h/map-of fn-int? (h/ref 'node))]
                   (h/ref 'node))]
       (is (every? (partial valid? model)
+                  (tcg/sample (gen model)))))
+
+    ;; Budget-based limit on optional entries in a map.
+    (let [model (h/let ['node (-> (h/map [:a fn-int?])
+                                  (h/with-optional-entries [:x (h/ref 'node)]
+                                                           [:y (h/ref 'node)]
+                                                           [:z (h/ref 'node)]))]
+                  (h/ref 'node))]
+      (is (every? (partial valid? model)
                   (tcg/sample (gen model)))))))
 
 #_(let [model (h/let ['tree (h/alt [:leaf (-> (h/fn int?)
