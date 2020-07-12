@@ -295,6 +295,9 @@
   (def fn-string? (-> (h/fn string?)
                       (h/with-test-check-gen tcg/string-alphanumeric)))
 
+  (def fn-keyword? (-> (h/fn keyword?)
+                       (h/with-test-check-gen tcg/keyword)))
+
   (tcg/sample (gen (-> (h/set)
                        (h/with-count (h/enum #{1 2 3 10}))
                        (h/with-condition (h/fn (comp #{1 2 3} count))))))
@@ -334,7 +337,10 @@
   ;; TODO: gen/choose used for coll-sized should not be influenced by test-check's size.
   ;; TODO: a helper function to work of count-model w.r.t. budget, as it is used in multiple places.
   (tcg/sample (gen (h/let ['node (h/map-of fn-int? (h/ref 'node))]
-                          (h/ref 'node)) 50)))
+                          (h/ref 'node)) 50))
+
+  (tcg/sample (gen (h/let ['node (h/map-of fn-keyword? (h/ref 'node))]
+                          (h/ref 'node)) 100) 1))
 
 (deftest gen-test
 

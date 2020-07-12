@@ -181,10 +181,11 @@
                              (recur (dec tries-left) r2 (inc size))))))))))
 
 (defn- rec-coll-size-gen [max-size]
-  (gen/fmap (fn [[x y]]
-              (quot (+ x y) 2))
-            (gen/tuple (gen/choose 0 max-size)
-                       (gen/choose 0 max-size))))
+  (if (zero? max-size)
+    (gen/return 0)
+    (gen/fmap (fn [[x y]] (+ x y 1))
+              (gen/tuple (gen/choose 0 (quot (dec max-size) 2))
+                         (gen/choose 0 (quot max-size 2))))))
 
 ;; Statistics about the distribution
 #_ (->> (gen/sample (rec-coll-size-gen 20) 10000)
