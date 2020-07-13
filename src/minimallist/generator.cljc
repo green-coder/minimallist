@@ -63,15 +63,17 @@
 
 
 (defn- min-count-value [model]
-  (let [count-model (:count-model model)]
-    (if (nil? count-model)
-      0
-      (case (:type count-model)
-        :enum (let [values (filter number? (:values count-model))]
-                (when (seq values)
-                  (apply min values)))
-        :fn (:min-value count-model)
-        nil))))
+  (if (= (:type model) :repeat)
+    (:min model)
+    (let [count-model (:count-model model)]
+      (if (nil? count-model)
+        0
+        (case (:type count-model)
+          :enum (let [values (filter number? (:values count-model))]
+                  (when (seq values)
+                    (apply min values)))
+          :fn (:min-value count-model)
+          nil)))))
 
 (defn assoc-leaf-distance-visitor [model stack path]
   (let [distance (case (:type model)
@@ -84,8 +86,7 @@
                    (:set-of
                     :sequence-of
                     :repeat) (if (or (not (contains? model :elements-model))
-                                     (zero? (min-count-value model))
-                                     (zero? (:min model)))
+                                     (zero? (min-count-value model)))
                                0
                                (some-> (-> model :elements-model ::leaf-distance) inc))
                    (:or
