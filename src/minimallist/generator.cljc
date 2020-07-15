@@ -182,11 +182,11 @@
                              (recur (dec tries-left) r2 (inc size))))))))))
 
 (defn- rec-coll-size-gen [max-size]
-  (if (zero? max-size)
-    (gen/return 0)
+  (if (pos? max-size)
     (gen/fmap (fn [[x y]] (+ x y 1))
               (gen/tuple (gen/choose 0 (quot (dec max-size) 2))
-                         (gen/choose 0 (quot max-size 2))))))
+                         (gen/choose 0 (quot max-size 2))))
+    (gen/return 0)))
 
 ;; Statistics about the distribution
 #_ (->> (gen/sample (rec-coll-size-gen 20) 10000)
@@ -249,15 +249,29 @@
                    (let [chosen-entry (first (sort-by (comp ::min-cost :model) possible-entries))]
                      (sequence-generator context (:model chosen-entry) budget))))
 
+          ;; TODO: distribute the budget amongst the entries.
           :cat (->> (apply gen/tuple (mapv (fn [entry]
                                              (sequence-generator context (:model entry) budget))
                                            (:entries model)))
                     (gen/fmap (fn [xs] (into [] cat xs))))
-          ;; TODO: choose n-repeat according to the budget.
-          :repeat (gen/let [n-repeat (gen/choose (:min model) (:max model))
-                            sequences (gen/vector (sequence-generator context (:elements-model model) budget)
-                                                  n-repeat)]
-                    (into [] cat sequences))
+
+          :repeat (let [;budget (max 0 (dec budget)) ; the repeat itself costs 1
+                        min-repeat (:min model)
+                        max-repeat (:max model)
+                        elements-model (:elements-model model)
+                        elm-min-cost (::min-cost elements-model 1)
+                        coll-max-size (-> (int (/ budget elm-min-cost))
+                                          (min max-repeat))]
+                    (gen/let [n-repeat (gen/fmap (fn [size] (+ min-repeat size))
+                                                 (rec-coll-size-gen (- coll-max-size min-repeat)))
+                              budgets (let [min-costs (repeat n-repeat elm-min-cost)]
+                                        (budget-split-gen budget min-costs))
+                              sequences (apply gen/tuple
+                                               (mapv (fn [budget]
+                                                       (sequence-generator context elements-model budget))
+                                                     budgets))]
+                      (into [] cat sequences)))
+
           :let (sequence-generator (merge context (:bindings model)) (:body model) budget)
           :ref (sequence-generator context (get context (:key model)) budget)))
     (gen/fmap vector (generator context model budget))))

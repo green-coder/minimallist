@@ -343,7 +343,11 @@
   (tcg/sample (gen (h/map [:a fn-int?])))
 
   (tcg/sample (gen (-> (h/map [:a fn-int?])
-                       (h/with-optional-entries [:b fn-string?])))))
+                       (h/with-optional-entries [:b fn-string?]))))
+
+  (tcg/sample (gen (h/repeat 5 10 fn-int?)))
+
+  #__)
 
 (deftest gen-test
 
@@ -459,7 +463,33 @@
                                                            [:z (h/ref 'node)]))]
                   (h/ref 'node))]
       (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))))
+                  (tcg/sample (gen model)))))
+
+    ;;; Budget-based limit on number of occurrences in a repeat.
+    ;(let [model (h/let ['node (h/repeat 0 1 (h/ref 'node))]
+    ;              (h/ref 'node))]
+    ;  (is (every? (partial valid? model)
+    ;              (tcg/sample (gen model)))))
+
+    ;; Model impossible to generate.
+    (let [model (h/let ['node (h/map [:a (h/ref 'node)])]
+                  (h/ref 'node))]
+      (is (thrown? Exception (tcg/sample (gen model)))))
+
+    ;; Model impossible to generate.
+    (let [model (h/let ['node (h/tuple (h/ref 'node))]
+                  (h/ref 'node))]
+      (is (thrown? Exception (tcg/sample (gen model)))))
+
+    ;; Model impossible to generate.
+    (let [model (h/let ['node (h/cat (h/ref 'node))]
+                  (h/ref 'node))]
+      (is (thrown? Exception (tcg/sample (gen model)))))
+
+    ;; Model impossible to generate.
+    (let [model (h/let ['node (h/repeat 1 2 (h/ref 'node))]
+                  (h/ref 'node))]
+      (is (thrown? Exception (tcg/sample (gen model)))))))
 
 #_(let [model (h/let ['tree (h/alt [:leaf (-> (h/fn int?)
                                               (h/with-test-check-gen tcg/nat))]
