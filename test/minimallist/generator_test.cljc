@@ -474,22 +474,22 @@
     ;; Model impossible to generate.
     (let [model (h/let ['node (h/map [:a (h/ref 'node)])]
                   (h/ref 'node))]
-      (is (thrown? Exception (tcg/sample (gen model)))))
+      (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model)))))
 
     ;; Model impossible to generate.
     (let [model (h/let ['node (h/tuple (h/ref 'node))]
                   (h/ref 'node))]
-      (is (thrown? Exception (tcg/sample (gen model)))))
+      (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model)))))
 
     ;; Model impossible to generate.
     (let [model (h/let ['node (h/cat (h/ref 'node))]
                   (h/ref 'node))]
-      (is (thrown? Exception (tcg/sample (gen model)))))
+      (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model)))))
 
     ;; Model impossible to generate.
     (let [model (h/let ['node (h/repeat 1 2 (h/ref 'node))]
                   (h/ref 'node))]
-      (is (thrown? Exception (tcg/sample (gen model)))))))
+      (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model)))))))
 
 #_(let [model (h/let ['tree (h/alt [:leaf (-> (h/fn int?)
                                               (h/with-test-check-gen tcg/nat))]
