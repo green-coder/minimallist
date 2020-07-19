@@ -21,31 +21,31 @@
             model (assoc :model model))))
 
 
-;; For :set and :sequence
+;; For :set-of and :sequence-of
 (defn with-count [collection-model count-model]
   (assoc collection-model :count-model count-model))
 
 ;; For :map
-(defn with-entries [map-model entries]
-   (assoc map-model
-     :entries (into (:entries map-model [])
-                    (cl/map -entry)
-                    entries)))
+(defn with-entries [map-model & entries]
+  (assoc map-model
+    :entries (into (:entries map-model [])
+                   (cl/map -entry)
+                   entries)))
 
 ;; For :map
-(defn with-optional-entries [map-model entries]
-   (assoc map-model
-     :entries (into (:entries map-model [])
-                    (cl/map (cl/fn [entry]
-                              (-> (-entry entry)
-                                  (assoc :optional true))))
-                    entries)))
+(defn with-optional-entries [map-model & entries]
+  (assoc map-model
+    :entries (into (:entries map-model [])
+                   (cl/map (cl/fn [entry]
+                             (-> (-entry entry)
+                                 (assoc :optional true))))
+                   entries)))
 
-;; For :map
+;; For :map-of
 (defn with-keys [map-model keys-model]
   (assoc map-model :keys {:model keys-model}))
 
-;; For :map
+;; For :map-of
 (defn with-values [map-model values-model]
   (assoc map-model :values {:model values-model}))
 
@@ -53,11 +53,15 @@
 (defn with-condition [collection-model condition-model]
   (assoc collection-model :condition-model condition-model))
 
-;; For :sequence, :cat and :repeat
+;; For any node, mostly for :fn
+(defn with-test-check-gen [model generator]
+  (assoc model :test.check/generator generator))
+
+;; For :sequence-of, :sequence, :cat and :repeat
 (defn in-vector [sequence-model]
   (assoc sequence-model :coll-type :vector))
 
-;; For :sequence, :cat and :repeat
+;; For :sequence-of, :sequence, :cat and :repeat
 (defn in-list [sequence-model]
   (assoc sequence-model :coll-type :list))
 
@@ -68,9 +72,13 @@
 
 ;; the main functions
 
-(defn fn [predicate]
-  {:type :fn
-   :fn predicate})
+(defn fn
+  ([predicate]
+   (fn {} predicate))
+  ([options predicate]
+   (assoc options
+     :type :fn
+     :fn predicate)))
 
 (defn enum [values-set]
   {:type :enum
@@ -89,26 +97,26 @@
    :entries (mapv -entry conditions)})
 
 (defn set []
-  {:type :set})
+  {:type :set-of})
 
 (defn set-of [elements-model]
-  {:type :set
+  {:type :set-of
    :elements-model elements-model})
 
 (defn map
   ([]
    {:type :map})
   ([& entries]
-   (-> (map) (with-entries entries))))
+   (apply with-entries (map) entries)))
 
 (defn map-of [keys-model values-model]
-  (-> (map) (with-keys keys-model) (with-values values-model)))
+  (-> {:type :map-of} (with-keys keys-model) (with-values values-model)))
 
 (defn sequence []
   {:type :sequence})
 
 (defn sequence-of [elements-model]
-  {:type :sequence
+  {:type :sequence-of
    :elements-model elements-model})
 
 (defn list-of [elements-model]
@@ -118,7 +126,7 @@
   (-> (sequence-of elements-model) (in-vector)))
 
 (defn tuple [& entries]
-  {:type    :sequence
+  {:type :sequence
    :entries (mapv -entry entries)})
 
 (defn list [& entries]
@@ -150,9 +158,9 @@
 (defn + [model]
   (repeat 1 ##Inf model))
 
-(defn let [[& {:as bindings}] body]
+(defn let [bindings body]
   {:type :let
-   :bindings bindings
+   :bindings (apply hash-map bindings)
    :body body})
 
 (defn ref [key]

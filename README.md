@@ -1,18 +1,18 @@
-[![Clojars Project](https://img.shields.io/clojars/v/minimallist.svg)](https://clojars.org/minimallist)
-[![cljdoc badge](https://cljdoc.org/badge/minimallist/minimallist)](https://cljdoc.org/d/minimallist/minimallist/CURRENT)
-[![CircleCI](https://circleci.com/gh/green-coder/minimallist.svg?style=svg)](https://circleci.com/gh/green-coder/minimallist)
-
-## Minimallist
+## Minimallist [![CircleCI](https://circleci.com/gh/green-coder/minimallist.svg?style=svg)](https://circleci.com/gh/green-coder/minimallist)
 
 A minimalist data driven data model library, inspired by [Clojure Spec](https://clojure.org/guides/spec) and [Malli](https://github.com/metosin/malli).
 
+[![Clojars Project](https://img.shields.io/clojars/v/minimallist.svg)](https://clojars.org/minimallist)
+[![cljdoc badge](https://cljdoc.org/badge/minimallist/minimallist)](https://cljdoc.org/d/minimallist/minimallist/CURRENT)
+[![project chat](https://img.shields.io/badge/slack-join_chat-brightgreen.svg)](https://clojurians.slack.com/archives/C012HUX1VPC)
+
 ## Features
 
-- no macro, no static registry, pure functions.
-- fully data driven, models are hash-map based,
-- support recursive definitions, sequence regex,
-- relatively simple implementation, very short to read (about 100 lines of code)
-- helpers functions to create the hash-map models painlessly,
+- validates and generates data,
+- fully data driven, models are hash-map based created via helpers,
+- support recursive definitions and sequence regex,
+- no macro, no static registry, pure functions,
+- relatively simple implementation, easy to read and modify,
 - cross platform (`.cljc`)
 
 ## Non-features
