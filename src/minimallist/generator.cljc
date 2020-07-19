@@ -249,11 +249,16 @@
                    (let [chosen-entry (first (sort-by (comp ::min-cost :model) possible-entries))]
                      (sequence-generator context (:model chosen-entry) budget))))
 
-          ;; TODO: distribute the budget amongst the entries.
-          :cat (->> (apply gen/tuple (mapv (fn [entry]
-                                             (sequence-generator context (:model entry) budget))
-                                           (:entries model)))
-                    (gen/fmap (fn [xs] (into [] cat xs))))
+          :cat (let [;budget (max 0 (dec budget)) ; the repeat itself costs 1
+                     entries (:entries model)
+                     min-costs (mapv (comp ::min-cost :model) entries)]
+                 (gen/let [budgets (budget-split-gen budget min-costs)
+                           sequences (apply gen/tuple
+                                               (mapv (fn [entry budget]
+                                                       (sequence-generator context (:model entry) budget))
+                                                     entries
+                                                     budgets))]
+                   (into [] cat sequences)))
 
           :repeat (let [;budget (max 0 (dec budget)) ; the repeat itself costs 1
                         min-repeat (:min model)

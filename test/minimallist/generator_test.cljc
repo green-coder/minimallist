@@ -345,6 +345,9 @@
   (tcg/sample (gen (-> (h/map [:a fn-int?])
                        (h/with-optional-entries [:b fn-string?]))))
 
+  (tcg/sample (gen (h/cat (h/vector-of fn-int?)
+                          (h/vector-of fn-int?)) 20))
+
   (tcg/sample (gen (h/repeat 5 10 fn-int?)))
 
   #__)
@@ -487,6 +490,10 @@
       (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model)))))
 
     ;; Model impossible to generate.
+    (let [model (h/let ['node (h/cat (h/ref 'node))]
+                  (h/ref 'node))]
+      (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model)))))
+
     (let [model (h/let ['node (h/repeat 1 2 (h/ref 'node))]
                   (h/ref 'node))]
       (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model)))))))
