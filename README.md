@@ -32,10 +32,10 @@ A minimalist data driven data model library, inspired by [Clojure Spec](https://
   (h/let ['hiccup (h/alt [:node (h/in-vector (h/cat (h/fn keyword?)
                                                     (h/? (h/map))
                                                     (h/* (h/not-inlined (h/ref 'hiccup)))))]
-                         [:primitive (h/or (h/fn nil?)
-                                           (h/fn boolean?)
-                                           (h/fn number?)
-                                           (h/fn string?))])]
+                         [:primitive (h/alt (h/fn nil?)
+                                            (h/fn boolean?)
+                                            (h/fn number?)
+                                            (h/fn string?))])]
     (h/ref 'hiccup)))
 
 (valid? hiccup-model [:div {:class [:foo :bar]}

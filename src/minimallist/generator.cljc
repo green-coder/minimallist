@@ -9,6 +9,9 @@
 ;; Helpers for generating non-structural data.
 ;; If you can't find what you need here, you can define your own helpers.
 
+(def fn-nil? (-> (h/fn nil?)
+                 (h/with-test-check-gen (gen/return nil))))
+
 (def fn-boolean? (-> (h/fn boolean?)
                      (h/with-test-check-gen (gen/elements [false true]))))
 
