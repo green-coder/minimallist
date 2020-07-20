@@ -1,9 +1,37 @@
 (ns minimallist.generator
-  (:require [minimallist.core :refer [valid?]]
+  (:require [minimallist.core :as m]
+            [minimallist.helper :as h]
             [minimallist.util :refer [reduce-update reduce-update-in reduce-mapv] :as util]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.rose-tree :as rose]
             [clojure.test.check.random :as random]))
+
+;; Helpers for generating non-structural data.
+;; If you can't find what you need here, you can define your own helpers.
+
+(def fn-boolean? (-> (h/fn boolean?)
+                     (h/with-test-check-gen (gen/elements [false true]))))
+
+(def fn-int? (-> (h/fn int?)
+                 (h/with-test-check-gen gen/nat)))
+
+(def fn-double? (-> (h/fn double?)
+                    (h/with-test-check-gen gen/double)))
+
+(def fn-string? (-> (h/fn string?)
+                    (h/with-test-check-gen gen/string-alphanumeric)))
+
+(def fn-symbol? (-> (h/fn symbol?)
+                    (h/with-test-check-gen gen/symbol)))
+
+(def fn-keyword? (-> (h/fn keyword?)
+                     (h/with-test-check-gen gen/keyword)))
+
+(def fn-keyword-ns? (-> (h/fn keyword?)
+                        (h/with-test-check-gen gen/keyword-ns)))
+
+
+
 
 
 (defn- find-stack-index [stack key]
@@ -341,7 +369,7 @@
                                                     (rose/pure elements-in-set)
                                                     (recur next-rng (rest coll-sizes)))))))))]
                   (cond->> set-gen
-                           (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model)))))
+                           (contains? model :condition-model) (gen/such-that (partial m/valid? context (:condition-model model)))))
 
         :map-of (cond->> (let [budget (max 0 (dec budget)) ; the collection itself costs 1
                                count-model (:count-model model)
@@ -369,7 +397,7 @@
                                                    (into {} entries))
                                                  entries-gen)]
                            (cond->> map-gen
-                             (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model))))))
+                             (contains? model :condition-model) (gen/such-that (partial m/valid? context (:condition-model model))))))
 
         :map (let [budget (max 0 (dec budget)) ; the collection itself costs 1
                    possible-entries (filterv (comp ::min-cost :model) (:entries model))
@@ -390,7 +418,7 @@
                                           selected-entries
                                           entry-budgets)))]
                (cond->> map-gen
-                 (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model)))))
+                 (contains? model :condition-model) (gen/such-that (partial m/valid? context (:condition-model model)))))
 
         (:sequence-of :sequence) (let [budget (max 0 (dec budget)) ; the collection itself costs 1
                                        entries (:entries model)
@@ -433,7 +461,7 @@
                                                              inside-list? (apply list)))
                                                          (gen/tuple coll-gen inside-list?-gen))]
                                    (cond->> seq-gen
-                                     (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model)))))
+                                     (contains? model :condition-model) (gen/such-that (partial m/valid? context (:condition-model model)))))
 
         (:cat :repeat) (cond->> (gen/bind gen/boolean
                                           (fn [random-bool]
@@ -445,7 +473,7 @@
                                                                  random-bool)]
                                               (cond->> gen
                                                 inside-list? (gen/fmap (partial apply list))))))
-                                (contains? model :condition-model) (gen/such-that (partial valid? context (:condition-model model))))
+                                (contains? model :condition-model) (gen/such-that (partial m/valid? context (:condition-model model))))
 
         :let (generator (merge context (:bindings model)) (:body model) budget)
 

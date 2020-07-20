@@ -4,7 +4,7 @@
             [minimallist.core :refer [valid?]]
             [minimallist.helper :as h]
             [minimallist.util :as util]
-            [minimallist.generator :refer [gen] :as mg]))
+            [minimallist.generator :as mg :refer [gen fn-int? fn-string?]]))
 
 (defn- path-test-visitor []
   ;; Testing using side effects.
@@ -289,15 +289,6 @@
 (comment
   ;; Nothing replaces occasional hand testing
 
-  (def fn-int? (-> (h/fn int?)
-                   (h/with-test-check-gen tcg/nat)))
-
-  (def fn-string? (-> (h/fn string?)
-                      (h/with-test-check-gen tcg/string-alphanumeric)))
-
-  (def fn-keyword? (-> (h/fn keyword?)
-                       (h/with-test-check-gen tcg/keyword)))
-
   (tcg/sample (gen (-> (h/set)
                        (h/with-count (h/enum #{1 2 3 10}))
                        (h/with-condition (h/fn (comp #{1 2 3} count))))))
@@ -353,150 +344,145 @@
   #__)
 
 (deftest gen-test
+  (let [model fn-string?]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
 
-  (let [fn-int? (-> (h/fn int?) (h/with-test-check-gen tcg/nat))
-        fn-string? (-> (h/fn string?) (h/with-test-check-gen tcg/string-alphanumeric))
-        fn-keyword? (-> (h/fn keyword?) (h/with-test-check-gen tcg/keyword))]
+  (let [model (h/enum #{:1 2 "3"})]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
 
-    (let [model fn-string?]
-      (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))
+  (let [model (-> (h/set-of fn-int?)
+                  (h/with-condition (h/fn (fn [coll]
+                                            (or (empty? coll)
+                                                (some even? coll))))))]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
 
-    (let [model (h/enum #{:1 2 "3"})]
-      (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))
+  (let [model (-> (h/set)
+                  (h/with-count (h/enum #{1 2 3 10}))
+                  (h/with-condition (h/fn (comp #{1 2 3} count))))]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
 
-    (let [model (-> (h/set-of fn-int?)
-                    (h/with-condition (h/fn (fn [coll]
-                                              (or (empty? coll)
-                                                  (some even? coll))))))]
-      (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))
+  (let [model (h/map-of fn-int? fn-string?)]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
 
-    (let [model (-> (h/set)
-                    (h/with-count (h/enum #{1 2 3 10}))
-                    (h/with-condition (h/fn (comp #{1 2 3} count))))]
-      (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))
+  (let [model (-> (h/map [:a fn-int?])
+                  (h/with-optional-entries [:b fn-string?]))
+        sample (tcg/sample (gen model) 100)]
+    (is (and (every? (partial valid? model) sample)
+             (some (fn [element] (contains? element :b)) sample)
+             (some (fn [element] (not (contains? element :b))) sample))))
 
-    (let [model (h/map-of fn-int? fn-string?)]
-      (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))
+  (let [model (h/sequence-of fn-int?)]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
 
-    (let [model (-> (h/map [:a fn-int?])
-                    (h/with-optional-entries [:b fn-string?]))
-          sample (tcg/sample (gen model) 100)]
-      (is (and (every? (partial valid? model) sample)
-               (some (fn [element] (contains? element :b)) sample)
-               (some (fn [element] (not (contains? element :b))) sample))))
+  (let [model (h/tuple fn-int? fn-string?)
+        sample (tcg/sample (gen model) 100)]
+    (is (and (every? (partial valid? model) sample)
+             (some list? sample)
+             (some vector? sample))))
 
-    (let [model (h/sequence-of fn-int?)]
-      (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))
+  (let [model (h/vector fn-int? fn-string?)
+        sample (tcg/sample (gen model))]
+    (is (and (every? (partial valid? model) sample)
+             (every? vector? sample))))
 
-    (let [model (h/tuple fn-int? fn-string?)
-          sample (tcg/sample (gen model) 100)]
-      (is (and (every? (partial valid? model) sample)
-               (some list? sample)
-               (some vector? sample))))
+  (let [model (h/list fn-int? fn-string?)
+        sample (tcg/sample (gen model))]
+    (is (and (every? (partial valid? model) sample)
+             (every? list? sample))))
 
-    (let [model (h/vector fn-int? fn-string?)
-          sample (tcg/sample (gen model))]
-      (is (and (every? (partial valid? model) sample)
-               (every? vector? sample))))
+  (let [model (h/alt fn-int? fn-string?)]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
 
-    (let [model (h/list fn-int? fn-string?)
-          sample (tcg/sample (gen model))]
-      (is (and (every? (partial valid? model) sample)
-               (every? list? sample))))
+  (let [model (h/cat fn-int? fn-string?)]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
 
-    (let [model (h/alt fn-int? fn-string?)]
-      (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))
+  (let [model (h/repeat 2 3 fn-int?)]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
 
-    (let [model (h/cat fn-int? fn-string?)]
-      (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))
+  (let [model (h/repeat 2 3 (h/cat fn-int? fn-string?))]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
 
-    (let [model (h/repeat 2 3 fn-int?)]
-      (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))
+  (let [model (h/let ['int? fn-int?
+                      'string? fn-string?
+                      'int-string? (h/cat (h/ref 'int?) (h/ref 'string?))]
+                (h/repeat 2 3 (h/ref 'int-string?)))]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
 
-    (let [model (h/repeat 2 3 (h/cat fn-int? fn-string?))]
-      (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))
+  ;; Budget-based limit on model choice.
+  (let [model (h/let ['tree (h/alt [:leaf fn-int?]
+                                   [:branch (h/vector (h/ref 'tree)
+                                                      (h/ref 'tree))])]
+                (h/ref 'tree))]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
 
-    (let [model (h/let ['int? fn-int?
-                        'string? fn-string?
-                        'int-string? (h/cat (h/ref 'int?) (h/ref 'string?))]
-                  (h/repeat 2 3 (h/ref 'int-string?)))]
-      (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))
+  ;; Budget-based limit on variable set size.
+  (let [model (h/let ['node (h/set-of (h/ref 'node))]
+                (h/ref 'node))]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
 
-    ;; Budget-based limit on model choice.
-    (let [model (h/let ['tree (h/alt [:leaf fn-int?]
-                                     [:branch (h/vector (h/ref 'tree)
-                                                        (h/ref 'tree))])]
-                  (h/ref 'tree))]
-      (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))
+  ;; Budget-based limit on variable sequence size.
+  (let [model (h/let ['node (h/vector-of (h/ref 'node))]
+                (h/ref 'node))]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
 
-    ;; Budget-based limit on variable set size.
-    (let [model (h/let ['node (h/set-of (h/ref 'node))]
-                  (h/ref 'node))]
-      (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))
+  ;; Budget-based limit on variable map size.
+  (let [model (h/let ['node (h/map-of fn-int? (h/ref 'node))]
+                (h/ref 'node))]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
 
-    ;; Budget-based limit on variable sequence size.
-    (let [model (h/let ['node (h/vector-of (h/ref 'node))]
-                  (h/ref 'node))]
-      (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))
+  ;; Budget-based limit on optional entries in a map.
+  (let [model (h/let ['node (-> (h/map [:a fn-int?])
+                                (h/with-optional-entries [:x (h/ref 'node)]
+                                                         [:y (h/ref 'node)]
+                                                         [:z (h/ref 'node)]))]
+                (h/ref 'node))]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
 
-    ;; Budget-based limit on variable map size.
-    (let [model (h/let ['node (h/map-of fn-int? (h/ref 'node))]
-                  (h/ref 'node))]
-      (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))
+  ;;; Budget-based limit on number of occurrences in a repeat.
+  ;(let [model (h/let ['node (h/repeat 0 1 (h/ref 'node))]
+  ;              (h/ref 'node))]
+  ;  (is (every? (partial valid? model)
+  ;              (tcg/sample (gen model)))))
 
-    ;; Budget-based limit on optional entries in a map.
-    (let [model (h/let ['node (-> (h/map [:a fn-int?])
-                                  (h/with-optional-entries [:x (h/ref 'node)]
-                                                           [:y (h/ref 'node)]
-                                                           [:z (h/ref 'node)]))]
-                  (h/ref 'node))]
-      (is (every? (partial valid? model)
-                  (tcg/sample (gen model)))))
+  ;; Model impossible to generate.
+  (let [model (h/let ['node (h/map [:a (h/ref 'node)])]
+                (h/ref 'node))]
+    (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model)))))
 
-    ;;; Budget-based limit on number of occurrences in a repeat.
-    ;(let [model (h/let ['node (h/repeat 0 1 (h/ref 'node))]
-    ;              (h/ref 'node))]
-    ;  (is (every? (partial valid? model)
-    ;              (tcg/sample (gen model)))))
+  ;; Model impossible to generate.
+  (let [model (h/let ['node (h/tuple (h/ref 'node))]
+                (h/ref 'node))]
+    (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model)))))
 
-    ;; Model impossible to generate.
-    (let [model (h/let ['node (h/map [:a (h/ref 'node)])]
-                  (h/ref 'node))]
-      (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model)))))
+  ;; Model impossible to generate.
+  (let [model (h/let ['node (h/cat (h/ref 'node))]
+                (h/ref 'node))]
+    (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model)))))
 
-    ;; Model impossible to generate.
-    (let [model (h/let ['node (h/tuple (h/ref 'node))]
-                  (h/ref 'node))]
-      (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model)))))
+  ;; Model impossible to generate.
+  (let [model (h/let ['node (h/cat (h/ref 'node))]
+                (h/ref 'node))]
+    (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model)))))
 
-    ;; Model impossible to generate.
-    (let [model (h/let ['node (h/cat (h/ref 'node))]
-                  (h/ref 'node))]
-      (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model)))))
-
-    ;; Model impossible to generate.
-    (let [model (h/let ['node (h/cat (h/ref 'node))]
-                  (h/ref 'node))]
-      (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model)))))
-
-    (let [model (h/let ['node (h/repeat 1 2 (h/ref 'node))]
-                  (h/ref 'node))]
-      (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model)))))))
+  (let [model (h/let ['node (h/repeat 1 2 (h/ref 'node))]
+                (h/ref 'node))]
+    (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model))))))
 
 #_(let [model (h/let ['tree (h/alt [:leaf (-> (h/fn int?)
                                               (h/with-test-check-gen tcg/nat))]
