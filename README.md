@@ -15,11 +15,10 @@ A minimalist data driven data model library, inspired by [Clojure Spec](https://
 - relatively simple implementation, easy to read and modify,
 - cross platform (`.cljc`)
 
-## Non-features
+## Non-goals (for now)
 
 - does not integrate with anything else,
 - does not try hard to be performant,
-- no roadmap or timeline: I made this library mainly for my own usage, and I take my time.
 
 ## Usage
 
