@@ -4,7 +4,7 @@
             [minimallist.core :refer [valid?]]
             [minimallist.helper :as h]
             [minimallist.util :as util]
-            [minimallist.generator :as mg :refer [gen fn-int? fn-string?]]))
+            [minimallist.generator :as mg :refer [gen fn-any? fn-int? fn-string?]]))
 
 (defn- path-test-visitor []
   ;; Testing using side effects.
@@ -236,13 +236,17 @@
                    :values #{3 4}}
      ::mg/min-cost 7}
 
-    (h/set)
+    (h/set-of (h/fn any?))
     {:type :set-of
+     :elements-model {:type :fn
+                      ::mg/min-cost 1}
      ::mg/min-cost 1}
 
-    (-> (h/set)
+    (-> (h/set-of (h/fn any?))
         (h/with-count (h/val 3)))
     {:type :set-of
+     :elements-model {:type :fn
+                      ::mg/min-cost 1}
      :count-model {:type :enum
                    :values #{3}}
      ::mg/min-cost 4}
@@ -318,7 +322,7 @@
                                                  (or (empty? coll)
                                                      (some even? coll))))))))
 
-  (tcg/sample (gen (-> (h/set)
+  (tcg/sample (gen (-> (h/set-of (h/fn any?))
                        (h/with-count (h/enum #{1 2 3 10}))
                        (h/with-condition (h/fn (comp #{1 2 3} count))))))
 
@@ -359,7 +363,7 @@
     (is (every? (partial valid? model)
                 (tcg/sample (gen model)))))
 
-  (let [model (-> (h/set)
+  (let [model (-> (h/set-of fn-any?)
                   (h/with-count (h/enum #{1 2 3 10}))
                   (h/with-condition (h/fn (comp #{1 2 3} count))))]
     (is (every? (partial valid? model)

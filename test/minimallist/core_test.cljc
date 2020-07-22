@@ -107,7 +107,8 @@
                    [[1 :a] '(1 2 3) #{1 2 3} `(1 2 ~3)]
 
                    ;; sequence with size specified using a model
-                   (-> (h/sequence) (h/with-count (h/enum #{2 3})))
+                   (-> (h/sequence-of (h/fn any?))
+                       (h/with-count (h/enum #{2 3})))
                    ['(1 2) [1 "2"] `(1 ~"2") [1 "2" :3]]
                    [#{1 "a"} [1 "2" :3 :4]]
 
@@ -207,10 +208,10 @@
                                      [:node (h/in-vector (h/cat (h/fn keyword?)
                                                                 (h/? (h/map))
                                                                 (h/* (h/not-inlined (h/ref 'hiccup)))))]
-                                     [:primitive (h/or (h/fn nil?)
-                                                       (h/fn boolean?)
-                                                       (h/fn number?)
-                                                       (h/fn string?))])]
+                                     [:primitive (h/alt (h/fn nil?)
+                                                        (h/fn boolean?)
+                                                        (h/fn number?)
+                                                        (h/fn string?))])]
                           (h/ref 'hiccup))
                    [nil
                     false
@@ -311,14 +312,14 @@
                                                   :b {:valid? true}}
                                         :valid?  true}]
 
-                   ;; map - :keys
-                   (-> (h/map) (h/with-keys (h/fn keyword?)))
+                   ;; map-of - :keys
+                   (h/map-of (h/fn keyword?) (h/fn any?))
                    #{:context :model :data}
                    [{:a 1, :b 2} {:valid? true}
                     {"a" 1} {:valid? false}]
 
-                   ;; map - :values
-                   (-> (h/map) (h/with-values (h/fn int?)))
+                   ;; map-of - :values
+                   (h/map-of (h/fn any?) (h/fn int?))
                    #{:context :model :data}
                    [{:a 1, "b" 2} {:valid? true}
                     {:a "1"} {:valid? false}]
@@ -353,10 +354,16 @@
                               :valid? false}]
 
                    ;; sequence - :coll-type vector
-                   (-> (h/sequence) (h/in-vector))
+                   (h/vector-of (h/fn any?))
                    #{:context :model :data}
-                   [[1 2 3] {:valid? true}
-                    '(1 2 3) {:valid? false}]
+                   [[1 2 3] {:entries [{:valid? true}
+                                       {:valid? true}
+                                       {:valid? true}]
+                             :valid? true}
+                    '(1 2 3) {:entries [{:valid? true}
+                                        {:valid? true}
+                                        {:valid? true}]
+                              :valid? false}]
 
                    ;; sequence - :entries
                    (h/tuple (h/fn int?) (h/fn string?))
@@ -371,11 +378,21 @@
                          :valid?  false}]
 
                    ;; sequence - :count-model
-                   (-> (h/sequence) (h/with-count (h/val 3)))
+                   (-> (h/sequence-of (h/fn any?))
+                       (h/with-count (h/val 3)))
                    #{:context :model :data}
-                   [[1 2] {:valid? false}
-                    [1 2 3] {:valid? true}
-                    [1 2 3 4] {:valid? false}]
+                   [[1 2] {:entries [{:valid? true}
+                                     {:valid? true}]
+                           :valid? false}
+                    [1 2 3] {:entries [{:valid? true}
+                                       {:valid? true}
+                                       {:valid? true}]
+                             :valid? true}
+                    [1 2 3 4] {:entries [{:valid? true}
+                                         {:valid? true}
+                                         {:valid? true}
+                                         {:valid? true}]
+                               :valid? false}]
 
                    ;; alt - not inside a sequence
                    (h/alt [:number (h/fn int?)]

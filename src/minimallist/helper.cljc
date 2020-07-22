@@ -1,6 +1,6 @@
 (ns minimallist.helper
   (:refer-clojure :exclude [fn val and or set map sequence vector-of list vector cat repeat ? * + let ref])
-  (:require [clojure.core :as cl]))
+  (:require [clojure.core :as clj]))
 
 ;;
 ;; Some helper functions to compose hash-map based models
@@ -9,160 +9,212 @@
 
 ; Modifiers, can be used with the -> macro
 
-(defn- -entry [entry]
-  (cl/let [[key options model] (if (vector? entry)
-                                 (case (count entry)
-                                   2 [(first entry) nil (second entry)]
-                                   3 entry
-                                   (throw (ex-info "wrong entry format" entry)))
-                                 [nil nil entry])]
+(defn- -entry
+  "Parses an entry from one of the following formats:
+   - model
+   - [key model]
+   - [key options model]
+
+   When specified, options is a hashmap."
+  [entry]
+  (clj/let [[key options model] (if (vector? entry)
+                                  (case (count entry)
+                                    2 [(first entry) nil (second entry)]
+                                    3 entry
+                                    (throw (ex-info "wrong entry format" entry)))
+                                  [nil nil entry])]
     (cond-> options
             key (assoc :key key)
             model (assoc :model model))))
 
 
-;; For :set-of and :sequence-of
-(defn with-count [collection-model count-model]
+(defn with-count
+  "Specifies a :count-model to a collection model with varying size,
+   namely :set-of, :map-of and :sequence-of."
+  [collection-model count-model]
   (assoc collection-model :count-model count-model))
 
-;; For :map
-(defn with-entries [map-model & entries]
+(defn with-entries
+  "Adds entries to a :map model."
+  [map-model & entries]
   (assoc map-model
     :entries (into (:entries map-model [])
-                   (cl/map -entry)
+                   (clj/map -entry)
                    entries)))
 
-;; For :map
-(defn with-optional-entries [map-model & entries]
+(defn with-optional-entries
+  "Adds optional entries to a :map model."
+  [map-model & entries]
   (assoc map-model
     :entries (into (:entries map-model [])
-                   (cl/map (cl/fn [entry]
-                             (-> (-entry entry)
-                                 (assoc :optional true))))
+                   (clj/map (clj/fn [entry]
+                              (-> (-entry entry)
+                                  (assoc :optional true))))
                    entries)))
 
-;; For :map-of
-(defn with-keys [map-model keys-model]
-  (assoc map-model :keys {:model keys-model}))
-
-;; For :map-of
-(defn with-values [map-model values-model]
-  (assoc map-model :values {:model values-model}))
-
-;; For any structural node
-(defn with-condition [collection-model condition-model]
-  (assoc collection-model :condition-model condition-model))
+(defn with-condition
+  "Specifies a :condition-model to a model"
+  [model condition-model]
+  (assoc model :condition-model condition-model))
 
 ;; For any node, mostly for :fn
-(defn with-test-check-gen [model generator]
+(defn with-test-check-gen
+  "Specifies a test-check generator to a model."
+  [model generator]
   (assoc model :test.check/generator generator))
 
-;; For :sequence-of, :sequence, :cat and :repeat
-(defn in-vector [sequence-model]
+(defn in-vector
+  "Specifies the :coll-type to be a vector.
+   To be used on sequence model nodes, namely :sequence-of, :sequence, :cat and :repeat."
+  [sequence-model]
   (assoc sequence-model :coll-type :vector))
 
-;; For :sequence-of, :sequence, :cat and :repeat
-(defn in-list [sequence-model]
+(defn in-list
+  "Specifies the :coll-type to be a list.
+   To be used on sequence model nodes, namely :sequence-of, :sequence, :cat and :repeat."
+  [sequence-model]
   (assoc sequence-model :coll-type :list))
 
-;; For :alt, :cat and :repeat
-(defn not-inlined [sequence-model]
+(defn not-inlined
+  "Specify that this sequence model should not be inlined within its parent model.
+   Useful on nodes :alt, :cat and :repeat."
+  [sequence-model]
   (assoc sequence-model :inlined false))
 
 
-;; the main functions
+;; The main functions
 
 (defn fn
-  ([predicate]
-   (fn {} predicate))
-  ([options predicate]
-   (assoc options
-     :type :fn
-     :fn predicate)))
+  "Model for values verifying custom predicates."
+  [predicate]
+  {:type :fn
+   :fn predicate})
 
-(defn enum [values-set]
-  {:type :enum
-   :values values-set})
-
-(defn val [value]
+(defn val
+  "Model for a fixed value."
+  [value]
   {:type :enum
    :values #{value}})
 
-(defn and [& conditions]
+(defn enum
+  "Model of one value from a set."
+  [values-set]
+  {:type :enum
+   :values values-set})
+
+(defn and
+  "Model for validating a value against a conjunction of models."
+  [& conditions]
   {:type :and
    :entries (mapv -entry conditions)})
 
-(defn or [& conditions]
+(defn or
+  "Model for validating a value against a disjunction of models."
+  [& conditions]
   {:type :or
    :entries (mapv -entry conditions)})
 
-(defn set []
-  {:type :set-of})
-
-(defn set-of [elements-model]
+(defn set-of
+  "Model of a set of values matching a specific model."
+  [elements-model]
   {:type :set-of
    :elements-model elements-model})
 
+(defn map-of
+  "Model of a hashmap associating values of a specific model
+   to values of another specific model."
+  [keys-model values-model]
+  {:type :map-of
+   :keys {:model keys-model}
+   :values {:model values-model}})
+
+(defn sequence-of
+  "Model of a sequence of values, all matching a specific model."
+  [elements-model]
+  {:type :sequence-of
+   :elements-model elements-model})
+
+(defn list-of
+  "Same as sequence-of, but inside a list."
+  [elements-model]
+  (-> (sequence-of elements-model) (in-list)))
+
+(defn vector-of
+  "Same as sequence-of, but inside a vector."
+  [elements-model]
+  (-> (sequence-of elements-model) (in-vector)))
+
 (defn map
+  "Model of a hashmap with specified models for each of its entries."
   ([]
    {:type :map})
   ([& entries]
    (apply with-entries (map) entries)))
 
-(defn map-of [keys-model values-model]
-  (-> {:type :map-of} (with-keys keys-model) (with-values values-model)))
-
-(defn sequence []
-  {:type :sequence})
-
-(defn sequence-of [elements-model]
-  {:type :sequence-of
-   :elements-model elements-model})
-
-(defn list-of [elements-model]
-  (-> (sequence-of elements-model) (in-list)))
-
-(defn vector-of [elements-model]
-  (-> (sequence-of elements-model) (in-vector)))
-
-(defn tuple [& entries]
+(defn tuple
+  "A sequence of values, each matching their specific model."
+  [& entries]
   {:type :sequence
    :entries (mapv -entry entries)})
 
-(defn list [& entries]
+(defn list
+  "Same as tuple, but inside a list."
+  [& entries]
   (-> (apply tuple entries) (in-list)))
 
-(defn vector [& entries]
+(defn vector
+  "Same as tuple, but inside a vector."
+  [& entries]
   (-> (apply tuple entries) (in-vector)))
 
-(defn alt [& entries]
+(defn alt
+  "Model of a choice (alternative) between different possible entries."
+  [& entries]
   {:type :alt
    :entries (mapv -entry entries)})
 
-(defn cat [& entries]
+(defn cat
+  "Sequence model of a concatenation of models.
+   The sequence models in the entries are inlined by default."
+  [& entries]
   {:type :cat
    :entries (mapv -entry entries)})
 
-(defn repeat [min max elements-model]
+(defn repeat
+  "Sequence model of a repetition of a model.
+   If elements-model is a sequence model, it is inlined by default."
+  [min max elements-model]
   {:type :repeat
    :min min
    :max max
    :elements-model elements-model})
 
-(defn ? [model]
+(defn ?
+  "Sequence model of a model being either absent or present."
+  [model]
   (repeat 0 1 model))
 
-(defn * [model]
+(defn *
+  "Sequence model of a model being either absent or repeated an
+   arbitrary number of times."
+  [model]
   (repeat 0 ##Inf model))
 
-(defn + [model]
+(defn +
+  "Sequence model of a model being repeated an
+   arbitrary number of times."
+  [model]
   (repeat 1 ##Inf model))
 
-(defn let [bindings body]
+(defn let
+  "Model with local model definitions."
+  [bindings body]
   {:type :let
    :bindings (apply hash-map bindings)
    :body body})
 
-(defn ref [key]
+(defn ref
+  "A reference to a model locally defined."
+  [key]
   {:type :ref
    :key key})
