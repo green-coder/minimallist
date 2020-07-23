@@ -12,5 +12,9 @@
 
 ## Data
 
-* [Data Validation](data_validation.md)
-* [Data Generation](data_generation.md)
+* [Data Validation](usage.md#data-validation)
+* [Data Generation](usage.md#data-generation)
+
+## Misc
+
+* [Usage in Babashka](babashka.md)

@@ -27,6 +27,9 @@
 (def fn-double? (-> (h/fn double?)
                     (h/with-test-check-gen gen/double)))
 
+(def fn-number? (-> (h/fn number?)
+                    (h/with-test-check-gen (gen/one-of [gen/nat gen/double]))))
+
 (def fn-string? (-> (h/fn string?)
                     (h/with-test-check-gen gen/string-alphanumeric)))
 

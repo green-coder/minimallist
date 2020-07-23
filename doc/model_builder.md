@@ -101,10 +101,10 @@ outside of a `:condition-model` field, you need to add your own generator to the
 
 ```clojure
 ;; A set of keywords.
-(h/set-of (fn keyword?))
+(h/set-of (h/fn keyword?))
 
 ;; Persons by name.
-(h/map-of (h/fn string?) (ref 'person))
+(h/map-of (h/fn string?) (h/ref 'person))
 
 ;; Sequence of numbers, either in a list or in a vector.
 (h/sequence-of (h/fn int?))
