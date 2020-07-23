@@ -13,12 +13,13 @@ A minimalist data driven data model library, inspired by [Clojure Spec](https://
 - support recursive definitions and sequence regex,
 - no macro, no static registry, pure functions,
 - relatively simple implementation, easy to read and modify,
-- cross platform (`.cljc`)
+- cross platform (`.cljc`),
+- `valid?` runs in [Babashka](https://github.com/borkdude/babashka)
 
 ## Non-goals (for now)
 
 - does not integrate with anything else,
-- does not try hard to be performant,
+- does not try hard to be performant
 
 ## Usage
 

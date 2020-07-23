@@ -75,7 +75,7 @@ Represents a value which belongs to a set of pre-defined values.
 
 ### And / Or
 
-Data model used for validation using conjunction or disjunctions of
+Data model used for validation using conjunctions or disjunctions of
 other logical predicates.
 
 ```clojure
@@ -85,9 +85,10 @@ other logical predicates.
 ```
 
 Those models are not supported by Minimallist's generator. If you want to use it
-outside of a `:condition-model` field, you need to add your own generator to their nodes
+outside of a `:condition-model` field, you need to add your own generator to their nodes.
 
 ```clojure
+;; Minimallist's generator can use this model to generate data.
 (-> (h/or (h/fn #(<= 0 % 9))
           (h/val 42))
     (h/with-test-check-gen (tcg/one-of [(tcg/choose 0 9)
@@ -103,10 +104,10 @@ outside of a `:condition-model` field, you need to add your own generator to the
 (h/set-of (fn keyword?))
 
 ;; Persons by name.
-(h/map-of (fn/string?) (ref 'person))
+(h/map-of (h/fn string?) (ref 'person))
 
 ;; Sequence of numbers, either in a list or in a vector.
-(h/sequence-of (fn/int?))
+(h/sequence-of (h/fn int?))
 ```
 
 `list-of` and `vector-of` are shortcuts to define at the same time a `:sequence-of` node
@@ -114,10 +115,10 @@ with a `:coll-type` set to `:list` or `:vector`.
 
 ```clojure
 ;; A list of numbers.
-(h/list-of (fn/int?))
+(h/list-of (h/fn int?))
 
 ;; A vector of numbers.
-(h/sequence-of (fn/int?))
+(h/sequence-of (h/fn int?))
 ```
 
 ### Collections with entries
