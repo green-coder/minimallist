@@ -1,10 +1,11 @@
 (ns minimallist.generator-test
   (:require [clojure.test :refer [deftest testing is are]]
             [clojure.test.check.generators :as tcg]
+            [clojure.string :as str]
             [minimallist.core :refer [valid?]]
             [minimallist.helper :as h]
             [minimallist.util :as util]
-            [minimallist.generator :as mg :refer [gen fn-any? fn-int? fn-string?]]))
+            [minimallist.generator :as mg :refer [gen fn-any? fn-int? fn-string? fn-keyword?]]))
 
 (defn- path-test-visitor []
   ;; Testing using side effects.
@@ -291,9 +292,9 @@
                   tcg/sample))))
 
 (comment
-  ;; Nothing replaces occasional hand testing
+  ;; For occasional hand testing
 
-  (tcg/sample (gen (-> (h/set)
+  (tcg/sample (gen (-> (h/set-of fn-any?)
                        (h/with-count (h/enum #{1 2 3 10}))
                        (h/with-condition (h/fn (comp #{1 2 3} count))))))
 
@@ -322,7 +323,7 @@
                                                  (or (empty? coll)
                                                      (some even? coll))))))))
 
-  (tcg/sample (gen (-> (h/set-of (h/fn any?))
+  (tcg/sample (gen (-> (h/set-of fn-any?)
                        (h/with-count (h/enum #{1 2 3 10}))
                        (h/with-condition (h/fn (comp #{1 2 3} count))))))
 
