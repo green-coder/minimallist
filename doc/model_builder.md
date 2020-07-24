@@ -169,6 +169,56 @@ If your model can be either `A` or `B`, use the `:alt` node using `h/alt`.
        [:string (h/fn string?)])
 ```
 
+### Cat / Repeat
+
+`:cat` and `:repeat` nodes represent sequences of models.
+
+```clojure
+;; Sequential collection (list or vector) which contains
+;; 1 to 3 booleans, followed by
+;; 0 or 1 time integers, followed by
+;; at least 1 string, followed by
+;; any number of keywords.
+(h/cat (h/repeat 1 3 (h/fn boolean?))
+       (h/repeat 0 1 (h/fn int?))
+       (h/repeat 1 ##Inf (h/fn string?))
+       (h/repeat 0 ##Inf (h/fn keyword?)))
+
+;; The same model, but written using shortcuts.
+(h/cat (h/repeat 1 3 (h/fn boolean?))
+       (h/? (h/fn int?))
+       (h/+ (h/fn string?))
+       (h/* (h/fn keyword?)))
+```
+
+We can specify the type of collection used to contain a sequence.
+
+```clojure
+;; A sequence of things which has to be inside a vector.
+(-> (h/cat (h/? (h/fn int?))
+           (h/fn string?))
+    h/in-vector)
+
+;; Same model, but which has to be inside a list.
+(-> (h/cat (h/? (h/fn int?))
+           (h/fn string?))
+    h/in-list)
+```
+
+When a sequence is inside another sequence, it is considered inlined by default.
+With `h/not-inlined`, it will be contained in its own a collection (list or vector).
+
+```clojure
+;; Matches '(1 2 3 "Soleil")
+(h/cat (h/+ (h/fn int?))
+       (h/fn string?))
+
+;; Matches '([1 2 3] "Soleil")
+(h/cat (-> (h/+ (h/fn int?))
+           h/not-inlined)
+       (h/fn string?))
+```
+
 ### Let / Ref
 
 `h/let` creates a model where some local models are defined.
