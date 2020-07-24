@@ -416,6 +416,14 @@
     (is (every? (partial valid? model)
                 (tcg/sample (gen model)))))
 
+  (let [model (h/not-inlined (h/cat fn-int?))]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
+
+  (let [model (h/not-inlined (h/repeat 1 2 fn-int?))]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
+
   (let [model (h/let ['int? fn-int?
                       'string? fn-string?
                       'int-string? (h/cat (h/ref 'int?) (h/ref 'string?))]

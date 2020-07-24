@@ -319,7 +319,8 @@
 
           :let (sequence-generator (merge context (:bindings model)) (:body model) budget)
           :ref (sequence-generator context (get context (:key model)) budget)))
-    (gen/fmap vector (generator context model budget))))
+    (gen/fmap vector
+              (generator context (dissoc model :inlined) budget))))
 
 (defn- generator
   "Returns a generator of a data structure."
