@@ -479,7 +479,7 @@
         (:cat :repeat) (cond->> (gen/bind gen/boolean
                                           (fn [random-bool]
                                             (let [budget (max 0 (dec budget)) ; the collection itself costs 1
-                                                  gen (sequence-generator context model budget)
+                                                  gen (sequence-generator context (dissoc model :inlined) budget)
                                                   inside-list? (case (:coll-type model)
                                                                  :list true
                                                                  :vector false

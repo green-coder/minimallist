@@ -124,7 +124,7 @@
                         ((-> (:coll-type model :any) {:any any?
                                                       :list list?
                                                       :vector vector?}) data)
-                        (some nil? (left-overs context model (seq data)))
+                        (some nil? (left-overs context (dissoc model :inlined) (seq data)))
                         (implies (contains? model :count-model)
                                  (-valid? context (:count-model model) (count data)))
                         (implies (contains? model :condition-model)
