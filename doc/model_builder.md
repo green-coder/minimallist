@@ -103,8 +103,8 @@ outside of a `:condition-model` field, you need to add your own generator to the
 ;; A set of keywords.
 (h/set-of (h/fn keyword?))
 
-;; Persons by name.
-(h/map-of (h/fn string?) (h/ref 'person))
+;; Map of id->name.
+(h/map-of (h/fn int?) (h/fn string?))
 
 ;; Sequence of numbers, either in a list or in a vector.
 (h/sequence-of (h/fn int?))
@@ -118,7 +118,7 @@ with a `:coll-type` set to `:list` or `:vector`.
 (h/list-of (h/fn int?))
 
 ;; A vector of numbers.
-(h/sequence-of (h/fn int?))
+(h/vector-of (h/fn int?))
 ```
 
 ### Collections with entries
