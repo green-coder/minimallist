@@ -1,4 +1,6 @@
-{:cljdoc.doc/tree [["Introduction"      {:file "doc/README.md"}]
+{:cljdoc.doc/tree [["Readme"            {:file "README.md"}]
+                   ["Changes"           {:file "CHANGELOG.md"}]
+                   ["Introduction"      {:file "doc/introduction.md"}]
                    ["Design Choices"    {:file "doc/design_choices.md"}]
                    ["Model Anatomy"     {:file "doc/model_anatomy.md"}]
                    ["Model Builder"     {:file "doc/model_builder.md"}]
