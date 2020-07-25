@@ -269,14 +269,6 @@
 
     #__))
 
-(deftest preferably-such-that-test
-  (is (every? #{0 1 2}
-              (-> (#'mg/preferably-such-that #{0 1 2} (tcg/choose 0 5))
-                  tcg/sample)))
-  (is (every? #(<= 10 % 15)
-              (-> (#'mg/preferably-such-that #{0 1 2} (tcg/choose 10 15))
-                  tcg/sample))))
-
 (deftest budget-split-gen-test
   (is (every? (fn [[a b c]]
                 (and (<= 0 a 5)
@@ -497,4 +489,7 @@
                 (h/ref 'node))]
     (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model))))))
 
+;; TODO: [later] reuse the cat-ipsum model for parsing the output.
 
+;; TODO: in the :alt node, introduce a property :occurrence for the generator.
+;; TODO: generate models, use them to generate data, should not stack overflow.

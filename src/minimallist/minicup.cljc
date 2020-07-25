@@ -1,4 +1,4 @@
-(ns minimallist.minicup
+(ns ^:no-doc minimallist.minicup
   (:require [minimallist.core :as m]
             [minimallist.helper :as h]))
 

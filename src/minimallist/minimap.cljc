@@ -1,4 +1,4 @@
-(ns minimallist.minimap
+(ns ^:no-doc minimallist.minimap
   (:require [minimallist.core :as m]
             [minimallist.helper :as h]))
 
@@ -8,7 +8,7 @@
   (h/let ['model (h/alt [:fn (h/map [:type (h/val :fn)]
                                     [:fn (h/fn fn?)])]
                         [:enum (h/map [:type (h/val :enum)]
-                                      [:values (h/set)])]
+                                      [:values (h/set-of (h/fn any?))])]
                         [:and-or (h/map [:type (h/enum #{:and :or})]
                                         [:entries (h/vector-of (h/map [:model (h/ref 'model)]))])]
                         [:set-of (-> (h/map [:type (h/val :set-of)])

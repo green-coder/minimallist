@@ -9,6 +9,8 @@
 
 ;; Memo for deploying a new release:
 ;; - change the version in pom.xml
+;; - update the pom.xml's dependencies:
+;;     clj -Spom
 ;; - build the jar:
 ;;     clojure -A:depstar -m hf.depstar.jar minimallist.jar -v
 ;; - deploy:

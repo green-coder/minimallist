@@ -44,8 +44,6 @@
 
 
 
-
-
 (defn- find-stack-index [stack key]
   (loop [index (dec (count stack))
          elements (rseq stack)]
@@ -115,7 +113,12 @@
           :fn (:min-value count-model)
           nil)))))
 
-(defn assoc-leaf-distance-visitor [model stack path]
+(defn assoc-leaf-distance-visitor
+  "Associate an 'distance to leaf' measure to each node of the model.
+   It is used as a hint on which path to choose when running out of budget
+   in a budget-based data generation. It's very useful as well to avoid
+   walking in infinite loops in the model."
+  [model stack path]
   (let [distance (case (:type model)
                    (:fn :enum) 0
                    :map-of (let [key-distance (-> model :keys :model ::leaf-distance)
@@ -151,7 +154,10 @@
     (cond-> model
       (some? distance) (assoc ::leaf-distance distance))))
 
-(defn assoc-min-cost-visitor [model stack path]
+(defn assoc-min-cost-visitor
+  "Associate an 'minimun cost' measure to each node of the model.
+   It is used as a hint during the budget-based data generation."
+  [model stack path]
   (let [type (:type model)
         min-cost (case type
                    (:fn :enum) (::min-cost model 1)
@@ -199,26 +205,10 @@
     (cond-> model
       (some? min-cost) (assoc ::min-cost min-cost))))
 
-
-(defn- preferably-such-that
-  "A generator that tries to generate values satisfying a given predicate,
-   but won't throw an tantrum if it can't."
-  ([pred gen]
-   (preferably-such-that pred gen 10))
-  ([pred gen max-tries]
-   (#'gen/make-gen (fn [rng size]
-                     (loop [tries-left max-tries
-                            rng rng
-                            size size]
-                       (if (zero? tries-left)
-                         (gen/call-gen gen rng size)
-                         (let [[r1 r2] (random/split rng)
-                               value (gen/call-gen gen r1 size)]
-                           (if (pred (rose/root value))
-                             (rose/filter pred value)
-                             (recur (dec tries-left) r2 (inc size))))))))))
-
-(defn- rec-coll-size-gen [max-size]
+(defn- rec-coll-size-gen
+  "Returns a generator of numbers between 0 and max-size
+   with a gaussian random distribution."
+  [max-size]
   (if (pos? max-size)
     (gen/fmap (fn [[x y]] (+ x y 1))
               (gen/tuple (gen/choose 0 (quot (dec max-size) 2))

@@ -206,11 +206,13 @@
   ([context model data]
    (boolean (-valid? context model data))))
 
-(defn explain
+;; WIP, do not use!
+(defn ^:no-doc explain
   "Returns a structure describing what parts of the data are not matching the model."
   [model data])
 
-(defn describe
+;; WIP, do not use!
+(defn ^:no-doc describe
   "Returns a descriptions of the data's structure using a hierarchy of hash-maps."
   ([model data]
    (describe {} model data))
@@ -320,7 +322,8 @@
 ;; TODO: Treat the attributes independently of the type of the node in which they appear.
 ;;       That's a kind of composition pattern a-la-unity.
 
-(defn undescribe
+;; WIP, do not use!
+(defn ^:no-doc undescribe
   "Returns a data which matches a description."
   [model description])
 
