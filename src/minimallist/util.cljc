@@ -1,4 +1,4 @@
-(ns minimallist.util
+(ns ^:no-doc minimallist.util
   (:require [clojure.set :as set]
             [clojure.walk :as walk]))
 

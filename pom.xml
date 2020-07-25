@@ -3,15 +3,14 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>minimallist</groupId>
   <artifactId>minimallist</artifactId>
-  <version>0.0.2</version>
+  <version>0.0.3</version>
   <name>Minimallist</name>
   <description>A minimalist data driven data model library, inspired by Spec and Malli.</description>
   <url>https://github.com/green-coder/minimallist</url>
   <scm>
     <url>https://github.com/green-coder/minimallist</url>
-    <connection>
-            scm:git:git://github.com/green-coder/minimallist.git
-        </connection>
+    <connection>scm:git:git://github.com/green-coder/minimallist.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/green-coder/minimallist.git</developerConnection>
   </scm>
   <licenses>
     <license>
@@ -30,6 +29,12 @@
       <groupId>org.clojure</groupId>
       <artifactId>clojure</artifactId>
       <version>1.10.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.clojure</groupId>
+      <artifactId>test.check</artifactId>
+      <version>1.1.0</version>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
   <build>

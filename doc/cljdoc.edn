@@ -1,0 +1,7 @@
+{:cljdoc.doc/tree [["Introduction"      {:file "doc/README.md"}]
+                   ["Design Choices"    {:file "doc/design_choices.md"}]
+                   ["Model Anatomy"     {:file "doc/model_anatomy.md"}]
+                   ["Model Builder"     {:file "doc/model_builder.md"}]
+                   ["Data Validation"   {:file "doc/data_validation.md"}]
+                   ["Data Generation"   {:file "doc/data_generation.md"}]
+                   ["Usage in Babashka" {:file "doc/babashka.md"}]]}

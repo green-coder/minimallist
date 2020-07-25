@@ -12,8 +12,8 @@
 
 ## Data
 
-* [Data Validation](usage.md#data-validation)
-* [Data Generation](usage.md#data-generation)
+* [Data Validation](data_validation.md)
+* [Data Generation](data_generation.md)
 
 ## Misc
 

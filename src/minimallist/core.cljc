@@ -34,9 +34,11 @@
 
 ;;---
 
-(defmacro implies [condition & expressions]
-  `(if ~condition
-     (do ~@expressions)
+(defmacro ^:no-doc implies
+  "Logically equivalent to `(or (not condition) expression)`"
+  [cause consequence]
+  `(if ~cause
+     ~consequence
      true))
 
 (declare -valid?)

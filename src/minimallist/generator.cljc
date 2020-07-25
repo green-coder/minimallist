@@ -9,38 +9,49 @@
 ;; Helpers for generating non-structural data.
 ;; If you can't find what you need here, you can define your own helpers.
 
-(def fn-any? (-> (h/fn any?)
-                 (h/with-test-check-gen gen/any)))
+(def ^{:doc "A model that matches and generates anything."}
+  fn-any? (-> (h/fn any?)
+              (h/with-test-check-gen gen/any)))
 
-(def fn-any-simple? (-> (h/fn any?)
-                        (h/with-test-check-gen gen/simple-type)))
+(def ^{:doc "A model that matches anything and generates any scalar type."}
+  fn-any-simple? (-> (h/fn any?)
+                     (h/with-test-check-gen gen/simple-type)))
 
-(def fn-nil? (-> (h/fn nil?)
-                 (h/with-test-check-gen (gen/return nil))))
+(def ^{:doc "A model that matches and generates the nil value."}
+  fn-nil? (-> (h/fn nil?)
+              (h/with-test-check-gen (gen/return nil))))
 
-(def fn-boolean? (-> (h/fn boolean?)
-                     (h/with-test-check-gen (gen/elements [false true]))))
+(def ^{:doc "A model that matches and generates booleans."}
+  fn-boolean? (-> (h/fn boolean?)
+                  (h/with-test-check-gen (gen/elements [false true]))))
 
-(def fn-int? (-> (h/fn int?)
-                 (h/with-test-check-gen gen/nat)))
+(def ^{:doc "A model that matches and generates integers."}
+  fn-int? (-> (h/fn int?)
+              (h/with-test-check-gen gen/nat)))
 
-(def fn-double? (-> (h/fn double?)
-                    (h/with-test-check-gen gen/double)))
+(def ^{:doc "A model that matches and generates doubles."}
+  fn-double? (-> (h/fn double?)
+                 (h/with-test-check-gen gen/double)))
 
-(def fn-number? (-> (h/fn number?)
-                    (h/with-test-check-gen (gen/one-of [gen/nat gen/double]))))
+(def ^{:doc "A model that matches any number and generates intergers and doubles."}
+  fn-number? (-> (h/fn number?)
+                 (h/with-test-check-gen (gen/one-of [gen/nat gen/double]))))
 
-(def fn-string? (-> (h/fn string?)
-                    (h/with-test-check-gen gen/string-alphanumeric)))
+(def ^{:doc "A model that matches strings and generates alphanumeric strings."}
+  fn-string? (-> (h/fn string?)
+                 (h/with-test-check-gen gen/string-alphanumeric)))
 
-(def fn-symbol? (-> (h/fn symbol?)
-                    (h/with-test-check-gen gen/symbol)))
+(def ^{:doc "A model that matches and generates symbols."}
+  fn-symbol? (-> (h/fn symbol?)
+                 (h/with-test-check-gen gen/symbol)))
 
-(def fn-keyword? (-> (h/fn keyword?)
-                     (h/with-test-check-gen gen/keyword)))
+(def ^{:doc "A model that matches and generates keywords."}
+  fn-keyword? (-> (h/fn keyword?)
+                  (h/with-test-check-gen gen/keyword)))
 
-(def fn-keyword-ns? (-> (h/fn keyword?)
-                        (h/with-test-check-gen gen/keyword-ns)))
+(def ^{:doc "A model that matches keywords and generates keywords with a namespace."}
+  fn-keyword-ns? (-> (h/fn keyword?)
+                     (h/with-test-check-gen gen/keyword-ns)))
 
 
 
@@ -54,7 +65,7 @@
           (recur (dec index) (next elements)))))))
 
 ;; TODO: walk on :count-model and :condition-model nodes
-(defn postwalk [model visitor]
+(defn ^:no-doc postwalk [model visitor]
   (let [walk (fn walk [[stack walked-bindings] model path]
                (let [[[stack walked-bindings] model]
                      (case (:type model)
@@ -113,7 +124,7 @@
           :fn (:min-value count-model)
           nil)))))
 
-(defn assoc-leaf-distance-visitor
+(defn ^:no-doc assoc-leaf-distance-visitor
   "Associate an 'distance to leaf' measure to each node of the model.
    It is used as a hint on which path to choose when running out of budget
    in a budget-based data generation. It's very useful as well to avoid
@@ -154,7 +165,7 @@
     (cond-> model
       (some? distance) (assoc ::leaf-distance distance))))
 
-(defn assoc-min-cost-visitor
+(defn ^:no-doc assoc-min-cost-visitor
   "Associate an 'minimun cost' measure to each node of the model.
    It is used as a hint during the budget-based data generation."
   [model stack path]
