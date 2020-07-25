@@ -186,7 +186,7 @@
                         ::mg/min-cost 1}}
                {:model {:type :fn
                         ::mg/min-cost 1}}]
-     ::mg/min-cost 2}
+     ::mg/min-cost 3}
 
     (h/in-vector (h/cat (h/fn int?) (h/fn string?)))
     {:type :cat
@@ -497,23 +497,4 @@
                 (h/ref 'node))]
     (is (thrown? #?(:clj Exception :cljs js/Object) (tcg/sample (gen model))))))
 
-#_(let [model (h/let ['tree (h/alt [:leaf (-> (h/fn int?)
-                                              (h/with-test-check-gen tcg/nat))]
-                                   [:branch (h/vector (h/ref 'tree)
-                                                      (h/ref 'tree))])]
-                     (h/ref 'tree))]
-    (tcg/sample (gen model)))
 
-#_(let [model (h/let ['tree (h/alt [:leaf (-> (h/fn int?)
-                                              (h/with-test-check-gen tcg/nat))]
-                                   [:branch (h/vector (h/ref 'tree)
-                                                      (h/ref 'tree))])]
-                     (h/ref 'tree))
-        visitor (fn [model stack path]
-                  (-> model
-                      (mg/assoc-leaf-distance-visitor stack path)
-                      (mg/assoc-min-cost-visitor stack path)))
-        walker (fn [model]
-                 (mg/postwalk model visitor))
-        walked-model (util/iterate-while-different walker model 100)]
-    walked-model)

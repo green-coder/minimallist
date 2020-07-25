@@ -165,7 +165,7 @@
                              (some-> content-cost (+ container-cost)))
                    (:set-of
                     :sequence-of
-                    :repeat) (let [container-cost (if (#{:set-of :sequence-of} type) 1 0)
+                    :repeat) (let [container-cost 1
                                    min-count (min-count-value model)
                                    elements-model (:elements-model model)
                                    elements-model-min-cost (if elements-model
@@ -186,10 +186,7 @@
                             (reduce max vals)))
                    (:map
                     :sequence
-                    :cat) (let [container-cost (if (or (#{:map :sequence} type)
-                                                       (:coll-type model)
-                                                       (not (:inlined model true)))
-                                                 1 0)
+                    :cat) (let [container-cost 1
                                 vals (->> (:entries model)
                                           (remove :optional)
                                           (map (comp ::min-cost :model)))
@@ -259,16 +256,12 @@
       (gen/fmap (fn [rates]
                   (let [budget-factor (/ budget-minus-min-costs (reduce + rates))]
                     (mapv (fn [min-cost rate]
-                            (+ min-cost (* rate budget-factor)))
+                            (+ min-cost (int (* rate budget-factor))))
                           min-costs
                           rates)))
                 (gen/vector (gen/choose 1 100) nb-elements)))
     (gen/return [])))
 
-
-;; TODO: What if ... conditions could only exist as something else's :condition-model?
-;;       conditions would then only be used for validity testing, not generation.
-;; TODO: add :condition-model to :fn nodes and maybe others (all of them?)
 
 (declare generator)
 
@@ -289,22 +282,22 @@
                    (let [chosen-entry (first (sort-by (comp ::min-cost :model) possible-entries))]
                      (sequence-generator context (:model chosen-entry) budget))))
 
-          :cat (let [;budget (max 0 (dec budget)) ; the repeat itself costs 1
+          :cat (let [budget (max 0 (dec budget)) ; the cat itself costs 1
                      entries (:entries model)
                      min-costs (mapv (comp ::min-cost :model) entries)]
                  (gen/let [budgets (budget-split-gen budget min-costs)
                            sequences (apply gen/tuple
-                                               (mapv (fn [entry budget]
-                                                       (sequence-generator context (:model entry) budget))
-                                                     entries
-                                                     budgets))]
+                                            (mapv (fn [entry budget]
+                                                    (sequence-generator context (:model entry) budget))
+                                                  entries
+                                                  budgets))]
                    (into [] cat sequences)))
 
-          :repeat (let [;budget (max 0 (dec budget)) ; the repeat itself costs 1
+          :repeat (let [budget (max 0 (dec budget)) ; the repeat itself costs 1
                         min-repeat (:min model)
                         max-repeat (:max model)
                         elements-model (:elements-model model)
-                        elm-min-cost (::min-cost elements-model 1)
+                        elm-min-cost (::min-cost elements-model)
                         coll-max-size (-> (int (/ budget elm-min-cost))
                                           (min max-repeat))]
                     (gen/let [n-repeat (gen/fmap (fn [size] (+ min-repeat size))
@@ -348,7 +341,7 @@
         :set-of (let [budget (max 0 (dec budget)) ; the collection itself costs 1
                       elements-model (:elements-model model)
                       count-model (:count-model model)
-                      elm-min-cost (::min-cost elements-model 1)
+                      elm-min-cost (::min-cost elements-model)
                       coll-sizes-gen (if count-model
                                        (if (= (:type count-model) :enum)
                                          (gen/shuffle (sort (:values count-model)))
@@ -388,8 +381,8 @@
                                count-model (:count-model model)
                                keys-model (-> model :keys :model)
                                values-model (-> model :values :model)
-                               entry-min-cost (+ (::min-cost keys-model 1) ;; TODO: is the default values needed?
-                                                 (::min-cost values-model 1))
+                               entry-min-cost (+ (::min-cost keys-model)
+                                                 (::min-cost values-model))
                                coll-max-size (int (/ budget entry-min-cost))
                                coll-size-gen (if count-model
                                                (generator context count-model 0)
@@ -437,9 +430,7 @@
                                        entries (:entries model)
                                        coll-gen (if entries
                                                   ; :sequence ... count-model is not used
-                                                  (gen/bind (budget-split-gen budget (mapv (fn [entry]
-                                                                                             (::min-cost entry 1))
-                                                                                           entries))
+                                                  (gen/bind (budget-split-gen budget (mapv (comp ::min-cost :model) entries))
                                                             (fn [budgets]
                                                               (apply gen/tuple (mapv (fn [entry budget]
                                                                                        (generator context (:model entry) budget))
@@ -447,7 +438,7 @@
                                                   ; :sequence-of ... count-model and/or elements-model might be used
                                                   (let [count-model (:count-model model)
                                                         elements-model (:elements-model model)
-                                                        elm-min-cost (::min-cost elements-model 1)
+                                                        elm-min-cost (::min-cost elements-model)
                                                         coll-max-size (int (/ budget elm-min-cost))
                                                         coll-size-gen (if count-model
                                                                         (generator context count-model 0)
@@ -478,8 +469,7 @@
 
         (:cat :repeat) (cond->> (gen/bind gen/boolean
                                           (fn [random-bool]
-                                            (let [budget (max 0 (dec budget)) ; the collection itself costs 1
-                                                  gen (sequence-generator context (dissoc model :inlined) budget)
+                                            (let [gen (sequence-generator context (dissoc model :inlined) budget)
                                                   inside-list? (case (:coll-type model)
                                                                  :list true
                                                                  :vector false
