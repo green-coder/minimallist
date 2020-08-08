@@ -33,7 +33,7 @@
   fn-double? (-> (h/fn double?)
                  (h/with-test-check-gen gen/double)))
 
-(def ^{:doc "A model that matches any number and generates intergers and doubles."}
+(def ^{:doc "A model that matches any number and generates integers and doubles."}
   fn-number? (-> (h/fn number?)
                  (h/with-test-check-gen (gen/one-of [gen/nat gen/double]))))
 
@@ -41,17 +41,29 @@
   fn-string? (-> (h/fn string?)
                  (h/with-test-check-gen gen/string-alphanumeric)))
 
-(def ^{:doc "A model that matches and generates symbols."}
+(def ^{:doc "A model that matches and generates symbols with or without a namespace."}
   fn-symbol? (-> (h/fn symbol?)
-                 (h/with-test-check-gen gen/symbol)))
+                 (h/with-test-check-gen (gen/one-of [gen/symbol gen/symbol-ns]))))
 
-(def ^{:doc "A model that matches and generates keywords."}
+(def ^{:doc "A model that matches and generates symbols without a namespace."}
+  fn-simple-symbol? (-> (h/fn simple-symbol?)
+                        (h/with-test-check-gen gen/symbol)))
+
+(def ^{:doc "A model that matches and generates symbols with a namespace."}
+  fn-qualified-symbol? (-> (h/fn qualified-symbol?)
+                           (h/with-test-check-gen gen/symbol-ns)))
+
+(def ^{:doc "A model that matches and generates keywords with or without a namespace."}
   fn-keyword? (-> (h/fn keyword?)
-                  (h/with-test-check-gen gen/keyword)))
+                  (h/with-test-check-gen (gen/one-of [gen/keyword gen/keyword-ns]))))
 
-(def ^{:doc "A model that matches keywords and generates keywords with a namespace."}
-  fn-keyword-ns? (-> (h/fn keyword?)
-                     (h/with-test-check-gen gen/keyword-ns)))
+(def ^{:doc "A model that matches and generates keywords without a namespace."}
+  fn-simple-keyword? (-> (h/fn simple-keyword?)
+                         (h/with-test-check-gen gen/keyword)))
+
+(def ^{:doc "A model that matches and generates keywords with a namespace."}
+  fn-qualified-keyword? (-> (h/fn qualified-keyword?)
+                            (h/with-test-check-gen gen/keyword-ns)))
 
 
 

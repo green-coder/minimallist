@@ -5,7 +5,9 @@
             [minimallist.core :refer [valid?]]
             [minimallist.helper :as h]
             [minimallist.util :as util]
-            [minimallist.generator :as mg :refer [gen fn-any? fn-int? fn-string? fn-keyword?]]))
+            [minimallist.generator :as mg :refer [gen fn-any? fn-int? fn-string?
+                                                  fn-symbol? fn-simple-symbol? fn-qualified-symbol?
+                                                  fn-keyword? fn-simple-keyword? fn-qualified-keyword?]]))
 
 (defn- path-test-visitor []
   ;; Testing using side effects.
@@ -337,6 +339,14 @@
                           (h/vector-of fn-int?)) 20))
 
   (tcg/sample (gen (h/repeat 5 10 fn-int?)))
+
+  (tcg/sample (gen fn-symbol?))
+  (tcg/sample (gen fn-simple-symbol?))
+  (tcg/sample (gen fn-qualified-symbol?))
+
+  (tcg/sample (gen fn-keyword?))
+  (tcg/sample (gen fn-simple-keyword?))
+  (tcg/sample (gen fn-qualified-keyword?))
 
   #__)
 

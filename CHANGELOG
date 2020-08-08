@@ -9,6 +9,11 @@ Versions prior to v0.1.0 are considered experimental, their API may change.
 
 ### Added
 - this changelog file.
+- the models `gen/fn-simple-symbol`, `gen/fn-qualified-symbol`,
+  `gen/fn-simple-keyword` and `gen/fn-qualified-keyword`.
+
+### Changed
+- the models `gen/fn-symbol`, `gen/fn-keyword` now generate qualified symbols and keywords,
 
 ## [0.0.3] - 2020-07-26
 
