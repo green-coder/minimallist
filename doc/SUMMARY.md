@@ -13,6 +13,7 @@
 ## Data
 
 * [Data Validation](data_validation.md)
+* [Data Parsing](data_parsing.md)
 * [Data Generation](data_generation.md)
 
 ## Misc

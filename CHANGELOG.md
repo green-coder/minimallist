@@ -8,6 +8,7 @@ Versions prior to v0.1.0 are considered experimental, their API may change.
 ## [Unreleased]
 
 
+## [0.0.6] - 2020-08-09
 ## [0.0.5] - 2020-08-09
 
 ### Fixed

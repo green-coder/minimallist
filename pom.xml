@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>minimallist</groupId>
   <artifactId>minimallist</artifactId>
-  <version>0.0.5</version>
+  <version>0.0.6</version>
   <name>Minimallist</name>
   <description>A minimalist data driven data model library, inspired by Spec and Malli.</description>
   <url>https://github.com/green-coder/minimallist</url>
@@ -11,6 +11,7 @@
     <url>https://github.com/green-coder/minimallist</url>
     <connection>scm:git:git://github.com/green-coder/minimallist.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/green-coder/minimallist.git</developerConnection>
+    <tag>all-work-and-no-play</tag>
   </scm>
   <licenses>
     <license>
