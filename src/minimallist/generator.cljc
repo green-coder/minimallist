@@ -178,7 +178,7 @@
       (some? distance) (assoc ::leaf-distance distance))))
 
 (defn ^:no-doc assoc-min-cost-visitor
-  "Associate an 'minimun cost' measure to each node of the model.
+  "Associate an 'minimum cost' measure to each node of the model.
    It is used as a hint during the budget-based data generation."
   [model stack path]
   (let [type (:type model)

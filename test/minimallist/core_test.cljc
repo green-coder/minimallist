@@ -249,164 +249,98 @@
 (deftest describe-test
   (let [test-data [;; fn
                    (h/fn #(= 1 %))
-                   #{:context :model :data}
-                   [1 {:valid? true}
-                    2 {:valid? false}]
+                   [1 1
+                    2 :invalid]
 
                    ;; enum
                    (h/enum #{1 "2" false nil})
-                   #{:context :model :data}
-                   [1 {:valid? true}
-                    "2" {:valid? true}
-                    false {:valid? true}
-                    nil {:valid? true}
-                    true {:valid? false}]
+                   [1 1
+                    "2" "2"
+                    false false
+                    nil nil
+                    true :invalid]
 
                    ;; and
                    (h/and (h/fn pos-int?)
                           (h/fn even?))
-                   #{:context :model :data}
-                   [0 {:valid? false}
-                    1 {:valid? false}
-                    2 {:valid? true}
-                    3 {:valid? false}
-                    4 {:valid? true}]
+                   [0 :invalid
+                    1 :invalid
+                    2 2
+                    3 :invalid
+                    4 4]
 
                    ;; or
                    (h/or (h/fn int?)
                          (h/fn string?))
-                   #{:context :model :data}
-                   [1 {:valid? true}
-                    "a" {:valid? true}
-                    :a {:valid? false}]
+                   [1 1
+                    "a" "a"
+                    :a :invalid]
 
                    ;; set
                    (h/set-of (h/fn int?))
-                   #{:context :model :data}
-                   [#{1} {:entries #{{:valid? true}}
-                          :valid?  true}]
+                   [#{1} #{1}]
 
                    ;; map
                    (h/map [:a {:optional true} (h/fn int?)]
                           [:b (h/or (h/fn int?)
                                     (h/fn string?))])
-                   #{:context :model :data}
-                   [{:a 1, :b 2} {:entries {:a {:valid? true}
-                                            :b {:valid? true}}
-                                  :valid?  true}
-                    {:a 1, :b "foo"} {:entries {:a {:valid? true}
-                                                :b {:valid? true}}
-                                      :valid?  true}
-                    {:a 1, :b [1 2]} {:entries {:a {:valid? true}
-                                                :b {:valid? false}}
-                                      :valid?  false}
+                   [{:a 1, :b 2} {:a 1, :b 2}
+                    {:a 1, :b "foo"} {:a 1, :b "foo"}
+                    {:a 1, :b [1 2]} :invalid
                     ; missing optional entry
-                    {:b 2} {:entries {:b {:valid? true}}
-                            :valid?  true}
+                    {:b 2} {:b 2}
                     ; missing entry
-                    {:a 1} {:entries {:a {:valid? true}
-                                      :b {:missing? true}}
-                            :valid?  false}
+                    {:a 1} :invalid
                     ; extra entry
-                    {:a 1, :b 2, :c 3} {:entries {:a {:valid? true}
-                                                  :b {:valid? true}}
-                                        :valid?  true}]
+                    {:a 1, :b 2, :c 3} {:a 1, :b 2}]
 
                    ;; map-of - :keys
                    (h/map-of (h/fn keyword?) (h/fn any?))
-                   #{:context :model :data}
-                   [{:a 1, :b 2} {:valid? true}
-                    {"a" 1} {:valid? false}]
+                   [{:a 1, :b 2} {:a 1, :b 2}
+                    {"a" 1} :invalid]
 
                    ;; map-of - :values
                    (h/map-of (h/fn any?) (h/fn int?))
-                   #{:context :model :data}
-                   [{:a 1, "b" 2} {:valid? true}
-                    {:a "1"} {:valid? false}]
+                   [{:a 1, "b" 2} {:a 1, "b" 2}
+                    {:a "1"} :invalid]
 
                    ;; sequence - :elements-model
                    (h/sequence-of (h/fn int?))
-                   #{:context :model :data}
-                   [[1 2 3] {:entries [{:valid? true}
-                                       {:valid? true}
-                                       {:valid? true}]
-                             :valid?  true}
-                    '(1 2 3) {:entries [{:valid? true}
-                                        {:valid? true}
-                                        {:valid? true}]
-                              :valid?  true}
-                    [1 "2" 3] {:entries [{:valid? true}
-                                         {:valid? false}
-                                         {:valid? true}]
-                               :valid?  false}]
+                   [[1 2 3] [1 2 3]
+                    '(1 2 3) '(1 2 3)
+                    [1 "2" 3] :invalid]
 
                    ;; sequence - :elements-model with condition
                    (-> (h/sequence-of (h/fn int?))
                        (h/with-condition (h/fn (fn [coll] (= coll (reverse coll))))))
-                   #{:context :model :data}
-                   [[1 2 1] {:entries [{:valid? true}
-                                       {:valid? true}
-                                       {:valid? true}]
-                             :valid?  true}
-                    '(1 2 3) {:entries [{:valid? true}
-                                        {:valid? true}
-                                        {:valid? true}]
-                              :valid? false}]
+                   [[1 2 1] [1 2 1]
+                    '(1 2 3) :invalid]
 
                    ;; sequence - :coll-type vector
                    (h/vector-of (h/fn any?))
-                   #{:context :model :data}
-                   [[1 2 3] {:entries [{:valid? true}
-                                       {:valid? true}
-                                       {:valid? true}]
-                             :valid? true}
-                    '(1 2 3) {:entries [{:valid? true}
-                                        {:valid? true}
-                                        {:valid? true}]
-                              :valid? false}]
+                   [[1 2 3] [1 2 3]
+                    '(1 2 3) :invalid]
 
                    ;; sequence - :entries
                    (h/tuple (h/fn int?) (h/fn string?))
-                   #{:context :model :data}
-                   [[1 "a"] {:entries [{:valid? true}
-                                       {:valid? true}]
-                             :valid?  true}
-                    [1 2] {:entries [{:valid? true}
-                                     {:valid? false}]
-                           :valid?  false}
-                    [1] {:entries [{:valid? true}]
-                         :valid?  false}]
+                   [[1 "a"] [1 "a"]
+                    [1 2] :invalid
+                    [1] :invalid]
 
                    ;; sequence - :count-model
                    (-> (h/sequence-of (h/fn any?))
                        (h/with-count (h/val 3)))
-                   #{:context :model :data}
-                   [[1 2] {:entries [{:valid? true}
-                                     {:valid? true}]
-                           :valid? false}
-                    [1 2 3] {:entries [{:valid? true}
-                                       {:valid? true}
-                                       {:valid? true}]
-                             :valid? true}
-                    [1 2 3 4] {:entries [{:valid? true}
-                                         {:valid? true}
-                                         {:valid? true}
-                                         {:valid? true}]
-                               :valid? false}]
+                   [[1 2] :invalid
+                    [1 2 3] [1 2 3]
+                    [1 2 3 4] :invalid]
 
                    ;; alt - not inside a sequence
                    (h/alt [:number (h/fn int?)]
                           [:sequence (h/cat (h/fn string?))])
-                   #{:context :model :data}
-                   [1 {:valid? true
-                       :key    :number
-                       :entry  {:valid? true}}
-                    ["1"] {:valid? true
-                           :key    :sequence
-                           :entry  {:valid?  true
-                                    :entries [{:valid? true}]}}
-                    [1] {:valid? false}
-                    "1" {:valid? false}]
+                   [1 [:number 1]
+                    ["1"] [:sequence {0 "1"}]
+                    [1] :invalid
+                    "1" :invalid]
 
                    ;; alt - inside a cat
                    (h/cat (h/fn int?)
@@ -415,24 +349,16 @@
                                  [:option3 (h/cat (h/fn string?)
                                                   (h/fn keyword?))])
                           (h/fn int?))
-                   #{:context :model :data}
-                   [[1 "2" 3] {:valid?  true
-                               :entries [{:valid? true}
-                                         {:key   :option1
-                                          :entry {:valid? true}}
-                                         {:valid? true}]}
-                    [1 :2 3] {:valid?  true
-                              :entries [{:valid? true}
-                                        {:key   :option2
-                                         :entry {:valid? true}}
-                                        {:valid? true}]}
-                    [1 "a" :b 3] {:valid?  true
-                                  :entries [{:valid? true}
-                                            {:key   :option3
-                                             :entry {:entries [{:valid? true}
-                                                               {:valid? true}]}}
-                                            {:valid? true}]}
-                    [1 ["a" :b] 3] {:valid? false}]
+                   [[1 "2" 3] {0 1
+                               1 [:option1 "2"]
+                               2 3}
+                    [1 :2 3] {0 1
+                              1 [:option2 :2]
+                              2 3}
+                    [1 "a" :b 3] {0 1
+                                  1 [:option3 {0 "a", 1 :b}]
+                                  2 3}
+                    [1 ["a" :b] 3] :invalid]
 
                    ;; alt - inside a cat, but with :inline false on its cat entry
                    (h/cat (h/fn int?)
@@ -441,193 +367,106 @@
                                  [:option3 (h/not-inlined (h/cat (h/fn string?)
                                                                  (h/fn keyword?)))])
                           (h/fn int?))
-                   #{:context :model :data}
-                   [[1 "2" 3] {:valid?  true
-                               :entries [{:valid? true}
-                                         {:key   :option1
-                                          :entry {:valid? true}}
-                                         {:valid? true}]}
-                    [1 :2 3] {:valid?  true
-                              :entries [{:valid? true}
-                                        {:key   :option2
-                                         :entry {:valid? true}}
-                                        {:valid? true}]}
-                    [1 "a" :b 3] {:valid? false}
-                    [1 ["a" :b] 3] {:valid?  true
-                                    :entries [{:valid? true}
-                                              {:key   :option3
-                                               :entry {:valid?  true
-                                                       :entries [{:valid? true}
-                                                                 {:valid? true}]}}
-                                              {:valid? true}]}]
+                   [[1 "2" 3] {0 1
+                               1 [:option1 "2"]
+                               2 3}
+                    [1 :2 3] {0 1
+                              1 [:option2 :2]
+                              2 3}
+                    [1 "a" :b 3] :invalid
+                    [1 ["a" :b] 3] {0 1
+                                    1 [:option3 {0 "a", 1 :b}]
+                                    2 3}]
 
                    ;; cat of cat, the inner cat is implicitly inlined
                    (h/cat (h/fn int?)
                           (h/cat (h/fn int?)))
-                   #{:context :model :data}
-                   [[1 2] {:valid?  true
-                           :entries [{:valid? true}
-                                     {:entries [{:valid? true}]}]}
-                    [1] {:valid? false}
-                    [1 [2]] {:valid? false}
-                    [1 2 3] {:valid? false}]
+                   [[1 2] {0 1, 1 {0 2}}
+                    [1] :invalid
+                    [1 [2]] :invalid
+                    [1 2 3] :invalid]
 
                    ;; cat of cat, the inner cat is explicitly not inlined
                    (h/cat (h/fn int?)
                           (h/not-inlined (h/cat (h/fn int?))))
-                   #{:context :model :data}
-                   [[1 [2]] {:valid?  true
-                             :entries [{:valid? true}
-                                       {:valid?  true
-                                        :entries [{:valid? true}]}]}
-                    [1 '(2)] {:valid?  true
-                              :entries [{:valid? true}
-                                        {:valid?  true
-                                         :entries [{:valid? true}]}]}
-                    [1] {:valid? false}
-                    [1 2] {:valid? false}
-                    [1 [2] 3] {:valid? false}]
+                   [[1 [2]] {0 1, 1 {0 2}}
+                    [1 '(2)] {0 1, 1 {0 2}}
+                    [1] :invalid
+                    [1 2] :invalid
+                    [1 [2] 3] :invalid]
 
                    ;; repeat - no collection type specified
                    (h/repeat 0 2 (h/fn int?))
-                   #{:context :model :data}
-                   [[] {:entries []
-                        :valid?  true}
-                    [1] {:entries [{:valid? true}]
-                         :valid?  true}
-                    [1 2] {:entries [{:valid? true}
-                                     {:valid? true}]
-                           :valid?  true}
-                    '() {:entries []
-                         :valid?  true}
-                    '(1) {:entries [{:valid? true}]
-                          :valid?  true}
-                    '(2 3) {:entries [{:valid? true}
-                                      {:valid? true}]
-                            :valid?  true}
-                    [1 2 3] {:valid? false}
-                    '(1 2 3) {:valid? false}]
+                   [[] []
+                    [1] [1]
+                    [1 2] [1 2]
+                    '() []
+                    '(1) [1]
+                    '(2 3) [2 3]
+                    [1 2 3] :invalid
+                    '(1 2 3) :invalid]
 
                    ;; repeat - inside a vector
                    (-> (h/repeat 0 2 (h/fn int?))
                        (h/in-vector))
-                   #{:context :model :data}
-                   [[1] {:valid?  true
-                         :entries [{:valid? true}]}
-                    '(1) {:valid? false}]
+                   [[1] [1]
+                    '(1) :invalid]
 
                    ;; repeat - inside a list
                    (-> (h/repeat 0 2 (h/fn int?))
                        (h/in-list))
-                   #{:context :model :data}
-                   [[1] {:valid? false}
-                    '(1) {:valid?  true
-                          :entries [{:valid? true}]}]
+                   [[1] :invalid
+                    '(1) [1]]
 
                    ;; repeat - min > 0
                    (h/repeat 2 3 (h/fn int?))
-                   #{:context :model :data}
-                   [[] {:valid? false}
-                    [1] {:valid? false}
-                    [1 2] {:valid?  true
-                           :entries [{:valid? true}
-                                     {:valid? true}]}
-                    [1 2 3] {:valid?  true
-                             :entries [{:valid? true}
-                                       {:valid? true}
-                                       {:valid? true}]}
-                    [1 2 3 4] {:valid? false}]
+                   [[] :invalid
+                    [1] :invalid
+                    [1 2] [1 2]
+                    [1 2 3] [1 2 3]
+                    [1 2 3 4] :invalid]
 
                    ;; repeat - max = +Infinity
                    (h/repeat 2 ##Inf (h/fn int?))
-                   #{:context :model}
-                   [[] {:valid? false, :data []}
-                    [1] {:valid? false, :data [1]}
-                    [1 2] {:valid?  true
-                           :data    [1 2]
-                           :entries [{:valid? true
-                                      :data   1}
-                                     {:valid? true
-                                      :data   2}]}
-                    [1 2 3] {:valid?  true
-                             :data    [1 2 3]
-                             :entries [{:valid? true
-                                        :data   1}
-                                       {:valid? true
-                                        :data   2}
-                                       {:valid? true
-                                        :data   3}]}]
+                   [[] :invalid
+                    [1] :invalid
+                    [1 2] [1 2]
+                    [1 2 3] [1 2 3]]
 
                    ;; repeat - of a cat
                    (h/repeat 1 2 (h/cat (h/fn int?)
                                         (h/fn string?)))
-                   #{:context :model}
-                   [[1 "a"] {:valid?  true
-                             :data    [1 "a"]
-                             :entries [{:entries [{:valid? true
-                                                   :data   1}
-                                                  {:valid? true
-                                                   :data   "a"}]}]}
-                    [1 "a" 2 "b"] {:valid?  true
-                                   :data    [1 "a" 2 "b"]
-                                   :entries [{:entries [{:valid? true
-                                                         :data   1}
-                                                        {:valid? true
-                                                         :data   "a"}]}
-                                             {:entries [{:valid? true
-                                                         :data   2}
-                                                        {:valid? true
-                                                         :data   "b"}]}]}
-                    [] {:data   []
-                        :valid? false}
-                    [1] {:data   [1]
-                         :valid? false}
-                    [1 2] {:valid? false
-                           :data   [1 2]}
-                    [1 "a" 2 "b" 3 "c"] {:valid? false
-                                         :data   [1 "a" 2 "b" 3 "c"]}]
+                   [[1 "a"] [{0 1, 1 "a"}]
+                    [1 "a" 2 "b"] [{0 1, 1 "a"} {0 2, 1 "b"}]
+                    [] :invalid
+                    [1] :invalid
+                    [1 2] :invalid
+                    [1 "a" 2 "b" 3 "c"] :invalid]
 
                    ;; repeat - of a cat with :inlined false
                    (h/repeat 1 2 (h/not-inlined (h/cat (h/fn int?)
                                                        (h/fn string?))))
-                   #{:context :model :data}
-                   [[[1 "a"]] {:valid?  true
-                               :entries [{:valid?  true
-                                          :entries [{:valid? true}
-                                                    {:valid? true}]}]}
-                    [[1 "a"] [2 "b"]] {:valid?  true
-                                       :entries [{:valid?  true
-                                                  :entries [{:valid? true}
-                                                            {:valid? true}]}
-                                                 {:valid?  true
-                                                  :entries [{:valid? true}
-                                                            {:valid? true}]}]}
-                    ['(1 "a") [2 "b"]] {:valid?  true
-                                        :entries [{:valid?  true
-                                                   :entries [{:valid? true}
-                                                             {:valid? true}]}
-                                                  {:valid?  true
-                                                   :entries [{:valid? true}
-                                                             {:valid? true}]}]}
-                    [] {:valid? false}
-                    [1] {:valid? false}
-                    [1 2] {:valid? false}
-                    [1 "a"] {:valid? false}
-                    [1 "a" 2 "b"] {:valid? false}
-                    [1 "a" 2 "b" 3 "c"] {:valid? false}]
+                   [[[1 "a"]] [{0 1, 1 "a"}]
+                    [[1 "a"] [2 "b"]] [{0 1, 1 "a"} {0 2, 1 "b"}]
+                    ['(1 "a") [2 "b"]] [{0 1, 1 "a"} {0 2, 1 "b"}]
+                    [] :invalid
+                    [1] :invalid
+                    [1 2] :invalid
+                    [1 "a"] :invalid
+                    [1 "a" 2 "b"] :invalid
+                    [1 "a" 2 "b" 3 "c"] :invalid]
 
                    ;; let / ref
                    (h/let ['pos-even? (h/and (h/fn pos-int?)
                                              (h/fn even?))]
                           (h/ref 'pos-even?))
-                   #{:context :model :data}
-                   [0 {:valid? false}
-                    1 {:valid? false}
-                    2 {:valid? true}
-                    3 {:valid? false}
-                    4 {:valid? true}]]]
+                   [0 :invalid
+                    1 :invalid
+                    2 2
+                    3 :invalid
+                    4 4]]]
 
-    (doseq [[model keys-to-remove data-description-pairs] (partition 3 test-data)]
+    (doseq [[model data-description-pairs] (partition 2 test-data)]
       (doseq [[data description] (partition 2 data-description-pairs)]
-        (is (= [data (util/cleanup-description (describe model data) keys-to-remove)]
+        (is (= [data (describe model data)]
                [data description]))))))

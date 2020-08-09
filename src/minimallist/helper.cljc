@@ -137,12 +137,12 @@
 (defn list-of
   "Same as sequence-of, but inside a list."
   [elements-model]
-  (-> (sequence-of elements-model) (in-list)))
+  (-> (sequence-of elements-model) in-list))
 
 (defn vector-of
   "Same as sequence-of, but inside a vector."
   [elements-model]
-  (-> (sequence-of elements-model) (in-vector)))
+  (-> (sequence-of elements-model) in-vector))
 
 (defn map
   "Model of a hashmap with specified models for each of its entries."
@@ -160,12 +160,12 @@
 (defn list
   "Same as tuple, but inside a list."
   [& entries]
-  (-> (apply tuple entries) (in-list)))
+  (-> (apply tuple entries) in-list))
 
 (defn vector
   "Same as tuple, but inside a vector."
   [& entries]
-  (-> (apply tuple entries) (in-vector)))
+  (-> (apply tuple entries) in-vector))
 
 (defn alt
   "Model of a choice (alternative) between different possible entries."
