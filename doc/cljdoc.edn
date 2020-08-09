@@ -5,5 +5,6 @@
                    ["Model Anatomy"     {:file "doc/model_anatomy.md"}]
                    ["Model Builder"     {:file "doc/model_builder.md"}]
                    ["Data Validation"   {:file "doc/data_validation.md"}]
+                   ["Data Parsing"      {:file "doc/data_parsing.md"}]
                    ["Data Generation"   {:file "doc/data_generation.md"}]
                    ["Usage in Babashka" {:file "doc/babashka.md"}]]}

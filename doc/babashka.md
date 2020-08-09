@@ -18,6 +18,9 @@ As a babashka shell script:
 (m/valid? (h/fn int?) 1)   ;=> true
 (m/valid? (h/fn int?) "1") ;=> false
 
+(m/describe (h/fn int?) 1)   ;=> 1
+(m/describe (h/fn int?) "1") ;=> :invalid
+
 ;; Does not work for now.
 ;(require '[clojure.test.check.generators :as tcg])
 ;(require '[minimallist.generator :as mg])

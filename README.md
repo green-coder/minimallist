@@ -5,6 +5,7 @@ A minimalist data driven data model library, inspired by [Clojure Spec](https://
 [![Clojars Project](https://img.shields.io/clojars/v/minimallist.svg)](https://clojars.org/minimallist)
 [![cljdoc badge](https://cljdoc.org/badge/minimallist/minimallist)](https://cljdoc.org/d/minimallist/minimallist/CURRENT)
 [![project chat](https://img.shields.io/badge/slack-join_chat-brightgreen.svg)](https://clojurians.slack.com/archives/C012HUX1VPC)
+[![cljdoc badge](https://img.shields.io/clojars/dt/minimallist?color=opal)](https://clojars.org/minimallist)
 
 ## Usage
 
@@ -14,29 +15,37 @@ A minimalist data driven data model library, inspired by [Clojure Spec](https://
             [minimallist.helper :as h]))
 
 (def hiccup-model
-  (h/let ['hiccup (h/alt [:node (h/in-vector (h/cat (h/fn keyword?)
-                                                    (h/? (h/map))
-                                                    (h/* (h/not-inlined (h/ref 'hiccup)))))]
-                         [:primitive (h/alt (h/fn nil?)
-                                            (h/fn boolean?)
-                                            (h/fn number?)
-                                            (h/fn string?))])]
+  (h/let ['hiccup (h/alt [:node (h/in-vector (h/cat [:name (h/fn keyword?)]
+                                                    [:props (h/? (h/map-of (h/fn keyword?) (h/fn any?)))]
+                                                    [:children (h/* (h/not-inlined (h/ref 'hiccup)))]))]
+                         [:primitive (h/alt [:nil (h/fn nil?)]
+                                            [:boolean (h/fn boolean?)]
+                                            [:number (h/fn number?)]
+                                            [:text (h/fn string?)])])]
     (h/ref 'hiccup)))
 
 (valid? hiccup-model [:div {:class [:foo :bar]}
                       [:p "Hello, world of data"]])
 ;=> true
+
+(describe hiccup-model [:div {:class [:foo :bar]}
+                        [:p "Hello, world of data"]])
+;=> [:node {:name :div,
+;           :props [{:class [:foo :bar]}],
+;           :children [[:node {:name :p
+;                              :props []
+;                              :children [[:primitive [:text "Hello, world of data"]]]}]]}]
 ```
 
 ## Features
 
-- validates and generates data,
+- validates, parses and generates data,
 - fully data driven, models are hash-map based created via helpers,
 - support recursive definitions and sequence regex,
 - no macro, no static registry, pure functions,
 - relatively simple implementation, easy to read and modify,
 - cross platform (`.cljc`),
-- `valid?` runs in [Babashka](https://github.com/borkdude/babashka)
+- `valid?` and `describe` run in [Babashka](https://github.com/borkdude/babashka)
 
 ## Non-goals (for now)
 
@@ -48,7 +57,7 @@ A minimalist data driven data model library, inspired by [Clojure Spec](https://
 See the [latest documentation on cljdoc](https://cljdoc.org/d/minimallist/minimallist/CURRENT) for:
 - A general description of the Minimallist project.
 - How to use the helpers to build your models.
-- How to validate and generate your data.
+- How to validate, parse and generate your data.
 
 ## Status
 
