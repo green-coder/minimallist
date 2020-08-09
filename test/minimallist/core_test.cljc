@@ -338,7 +338,7 @@
                    (h/alt [:number (h/fn int?)]
                           [:sequence (h/cat (h/fn string?))])
                    [1 [:number 1]
-                    ["1"] [:sequence {0 "1"}]
+                    ["1"] [:sequence ["1"]]
                     [1] :invalid
                     "1" :invalid]
 
@@ -349,15 +349,9 @@
                                  [:option3 (h/cat (h/fn string?)
                                                   (h/fn keyword?))])
                           (h/fn int?))
-                   [[1 "2" 3] {0 1
-                               1 [:option1 "2"]
-                               2 3}
-                    [1 :2 3] {0 1
-                              1 [:option2 :2]
-                              2 3}
-                    [1 "a" :b 3] {0 1
-                                  1 [:option3 {0 "a", 1 :b}]
-                                  2 3}
+                   [[1 "2" 3] [1 [:option1 "2"] 3]
+                    [1 :2 3] [1 [:option2 :2] 3]
+                    [1 "a" :b 3] [1 [:option3 ["a" :b]] 3]
                     [1 ["a" :b] 3] :invalid]
 
                    ;; alt - inside a cat, but with :inline false on its cat entry
@@ -367,21 +361,15 @@
                                  [:option3 (h/not-inlined (h/cat (h/fn string?)
                                                                  (h/fn keyword?)))])
                           (h/fn int?))
-                   [[1 "2" 3] {0 1
-                               1 [:option1 "2"]
-                               2 3}
-                    [1 :2 3] {0 1
-                              1 [:option2 :2]
-                              2 3}
+                   [[1 "2" 3] [1 [:option1 "2"] 3]
+                    [1 :2 3] [1 [:option2 :2] 3]
                     [1 "a" :b 3] :invalid
-                    [1 ["a" :b] 3] {0 1
-                                    1 [:option3 {0 "a", 1 :b}]
-                                    2 3}]
+                    [1 ["a" :b] 3] [1 [:option3 ["a" :b]] 3]]
 
                    ;; cat of cat, the inner cat is implicitly inlined
                    (h/cat (h/fn int?)
                           (h/cat (h/fn int?)))
-                   [[1 2] {0 1, 1 {0 2}}
+                   [[1 2] [1 [2]]
                     [1] :invalid
                     [1 [2]] :invalid
                     [1 2 3] :invalid]
@@ -389,8 +377,8 @@
                    ;; cat of cat, the inner cat is explicitly not inlined
                    (h/cat (h/fn int?)
                           (h/not-inlined (h/cat (h/fn int?))))
-                   [[1 [2]] {0 1, 1 {0 2}}
-                    [1 '(2)] {0 1, 1 {0 2}}
+                   [[1 [2]] [1 [2]]
+                    [1 '(2)] [1 [2]]
                     [1] :invalid
                     [1 2] :invalid
                     [1 [2] 3] :invalid]
@@ -436,8 +424,8 @@
                    ;; repeat - of a cat
                    (h/repeat 1 2 (h/cat (h/fn int?)
                                         (h/fn string?)))
-                   [[1 "a"] [{0 1, 1 "a"}]
-                    [1 "a" 2 "b"] [{0 1, 1 "a"} {0 2, 1 "b"}]
+                   [[1 "a"] [[1 "a"]]
+                    [1 "a" 2 "b"] [[1 "a"] [2 "b"]]
                     [] :invalid
                     [1] :invalid
                     [1 2] :invalid
@@ -446,9 +434,9 @@
                    ;; repeat - of a cat with :inlined false
                    (h/repeat 1 2 (h/not-inlined (h/cat (h/fn int?)
                                                        (h/fn string?))))
-                   [[[1 "a"]] [{0 1, 1 "a"}]
-                    [[1 "a"] [2 "b"]] [{0 1, 1 "a"} {0 2, 1 "b"}]
-                    ['(1 "a") [2 "b"]] [{0 1, 1 "a"} {0 2, 1 "b"}]
+                   [[[1 "a"]] [[1 "a"]]
+                    [[1 "a"] [2 "b"]] [[1 "a"] [2 "b"]]
+                    ['(1 "a") [2 "b"]] [[1 "a"] [2 "b"]]
                     [] :invalid
                     [1] :invalid
                     [1 2] :invalid

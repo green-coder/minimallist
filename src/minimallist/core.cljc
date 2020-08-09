@@ -134,12 +134,6 @@
     :let (-valid? (into context (:bindings model)) (:body model) data)
     :ref (-valid? context (get context (:key model)) data)))
 
-(defn- with-default-keys [entries]
-  (into []
-        (map-indexed (fn [index entry]
-                       (assoc entry :key (:key entry index))))
-        entries))
-
 (declare -describe)
 
 (defn- sequence-descriptions
@@ -148,22 +142,34 @@
   (if (and (#{:alt :cat :repeat :let :ref} (:type model))
            (:inlined model true))
     (case (:type model)
-      :alt (mapcat (fn [entry]
+      :alt (mapcat (fn [index entry]
                      (->> (sequence-descriptions context (:model entry) seq-data)
                           (map (fn [seq-description]
                                  {:rest-seq (:rest-seq seq-description)
-                                  :desc [(:key entry) (:desc seq-description)]}))))
-                   (with-default-keys (:entries model)))
-      :cat (reduce (fn [seq-descriptions entry]
-                     (mapcat (fn [acc]
-                               (->> (sequence-descriptions context (:model entry) (:rest-seq acc))
-                                    (map (fn [seq-description]
-                                           {:rest-seq (:rest-seq seq-description)
-                                            :desc (assoc (:desc acc) (:key entry) (:desc seq-description))}))))
-                             seq-descriptions))
-                   [{:rest-seq seq-data
-                     :desc {}}]
-                   (with-default-keys (:entries model)))
+                                  :desc [(:key entry index) (:desc seq-description)]}))))
+                   (range)
+                   (:entries model))
+      :cat (if (every? #(not (contains? % :key)) (:entries model))
+             (reduce (fn [seq-descriptions entry]
+                       (mapcat (fn [acc]
+                                 (->> (sequence-descriptions context (:model entry) (:rest-seq acc))
+                                      (map (fn [seq-description]
+                                             {:rest-seq (:rest-seq seq-description)
+                                              :desc (conj (:desc acc) (:desc seq-description))}))))
+                               seq-descriptions))
+                     [{:rest-seq seq-data
+                       :desc []}]
+                     (:entries model))
+             (reduce-kv (fn [seq-descriptions index entry]
+                          (mapcat (fn [acc]
+                                    (->> (sequence-descriptions context (:model entry) (:rest-seq acc))
+                                         (map (fn [seq-description]
+                                                {:rest-seq (:rest-seq seq-description)
+                                                 :desc (assoc (:desc acc) (:key entry index) (:desc seq-description))}))))
+                                  seq-descriptions))
+                     [{:rest-seq seq-data
+                       :desc {}}]
+                     (:entries model)))
       :repeat (->> (iterate (fn [seq-descriptions]
                               (mapcat (fn [acc]
                                         (->> (sequence-descriptions context (:elements-model model) (:rest-seq acc))
