@@ -206,6 +206,17 @@
   [model]
   (repeat 1 ##Inf model))
 
+(defn transform
+  "Transformation of a data matching the model.
+   `destruct` is used during validation and parsing, and
+   `construct` is used during parsing and generation."
+  ([model destruct]
+   {:type :transform
+    :child-model model
+    :destruct destruct})
+  ([model destruct construct]
+   (assoc (transform model destruct) :construct construct)))
+
 (defn let
   "Model with local model definitions."
   [bindings body]

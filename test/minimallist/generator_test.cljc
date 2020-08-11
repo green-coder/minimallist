@@ -427,6 +427,13 @@
     (is (every? (partial valid? model)
                 (tcg/sample (gen model)))))
 
+  (let [model (-> (h/transform (h/sequence-of (h/enum #{"A" "T" "G" "C"}))
+                               #(mapv str (seq %))
+                               #(apply str %))
+                  (h/with-condition (h/fn string?)))]
+    (is (every? (partial valid? model)
+                (tcg/sample (gen model)))))
+
   (let [model (h/let ['int? fn-int?
                       'string? fn-string?
                       'int-string? (h/cat (h/ref 'int?) (h/ref 'string?))]
