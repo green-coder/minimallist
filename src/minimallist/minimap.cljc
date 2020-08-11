@@ -60,6 +60,11 @@
                                                               [:inlined (h/fn boolean?)]
                                                               [:condition-model (h/ref 'model)])
                                      (h/with-condition (h/fn #(<= (:min %) (:max %)))))]
+                        [:transform (-> (h/map [:type (h/val :transform)]
+                                               [:outer-model (h/ref 'model)]
+                                               [:inner-model (h/ref 'model)])
+                                        (h/with-optional-entries [:outer->inner (h/fn fn?)]
+                                                                 [:outer<-inner (h/fn fn?)]))]
                         [:let (h/map [:type (h/val :let)]
                                      [:bindings (h/map-of (h/fn any?)
                                                           (h/ref 'model))]

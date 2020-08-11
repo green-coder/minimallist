@@ -1,8 +1,7 @@
 (ns minimallist.core-test
   (:require [clojure.test :refer [deftest testing is are]]
             [minimallist.core :refer [valid? explain describe undescribe] :as m]
-            [minimallist.helper :as h]
-            [minimallist.util :as util]))
+            [minimallist.helper :as h]))
 
 (comment
   (#'m/sequence-descriptions {}
@@ -226,6 +225,14 @@
                     ['div]
                     [:div {:a 1} "hei" [:p {} {} "bonjour"]]]
 
+                   ;; transform
+                   (h/transform (h/fn string?)
+                                (h/sequence-of (h/enum #{"A" "T" "G" "C"}))
+                                #(mapv str (seq %))
+                                #(apply str %))
+                   ["" "A" "CGATCAT"]
+                   [:foobar "CGAUCAU" "AOEU"]
+
                    ;; let / ref - with recursion within a sequence
                    (h/let ['foo (h/cat (h/fn int?)
                                        (h/? (h/ref 'foo))
@@ -444,6 +451,18 @@
                     [1 "a" 2 "b"] :invalid
                     [1 "a" 2 "b" 3 "c"] :invalid]
 
+                   ;; transform
+                   (h/transform (h/fn string?)
+                                (h/sequence-of (h/enum #{"A" "T" "G" "C"}))
+                                #(mapv str (seq %))
+                                #(apply str %))
+                   ["" ""
+                    "A" "A"
+                    "CGATCAT" "CGATCAT"
+                    :foobar :invalid
+                    "CGAUCAU" :invalid
+                    "AOEU" :invalid]
+
                    ;; let / ref
                    (h/let ['pos-even? (h/and (h/fn pos-int?)
                                              (h/fn even?))]
@@ -456,5 +475,5 @@
 
     (doseq [[model data-description-pairs] (partition 2 test-data)]
       (doseq [[data description] (partition 2 data-description-pairs)]
-        (is (= [data (describe model data)]
-               [data description]))))))
+        (is (= [data description]
+               [data (describe model data)]))))))

@@ -206,6 +206,19 @@
   [model]
   (repeat 1 ##Inf model))
 
+(defn transform
+  "Transformation of a data matching the model.
+   `outer-model` is the model viewed from outside this node.
+   `inner-model` is the model used for the inside of the node.
+   `outer->inner` is transforming data during validation and parsing, and
+   `outer<-inner` is transforming data during parsing and generation."
+  [outer-model inner-model outer->inner outer<-inner]
+  {:type :transform
+   :outer-model outer-model
+   :inner-model inner-model
+   :outer->inner outer->inner
+   :outer<-inner outer<-inner})
+
 (defn let
   "Model with local model definitions."
   [bindings body]

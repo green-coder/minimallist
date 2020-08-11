@@ -219,6 +219,20 @@ With `h/not-inlined`, it will be contained in its own a collection (list or vect
        (h/fn string?))
 ```
 
+### Transform
+
+`h/transform` creates a bridge between an inner model and the outer model.
+The data is transformed is each direction when needed, via a separate function.
+
+```clojure
+(m/describe (h/transform (h/fn string?)
+                         (h/sequence-of (h/enum #{"A" "T" "G" "C"}))
+                         #(mapv str (seq %))
+                         #(apply str %))
+            "CGATCAT")
+;=> "CGATCAT"
+```
+
 ### Let / Ref
 
 `h/let` creates a model where some local models are defined.

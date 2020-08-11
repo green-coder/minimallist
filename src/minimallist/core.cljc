@@ -16,6 +16,7 @@
    :and :or
    :set-of :map-of :map :sequence-of :sequence
    :alt :cat :repeat
+   :transform
    :let :ref])
 
 ;; There are 2 kinds of predicates:
@@ -131,6 +132,8 @@
                                  (-valid? context (:count-model model) (count data)))
                         (implies (contains? model :condition-model)
                                  (-valid? context (:condition-model model) data)))
+    :transform (and (-valid? context (:outer-model model) data)
+                    (-valid? context (:inner-model model) ((:outer->inner model identity) data)))
     :let (-valid? (into context (:bindings model)) (:body model) data)
     :ref (-valid? context (get context (:key model)) data)))
 
@@ -219,7 +222,7 @@
                                 (implies (contains? model :count-model)
                                          (:valid? (-describe context (:count-model model) (count data))))
                                 (implies (contains? model :condition-model)
-                                         (:valid? (-describe context (:condition-model model) data))))]
+                                         (-valid? context (:condition-model model) data)))]
                 {:valid? valid?
                  :desc (into #{} (map :desc) entries)}))
     :map-of (if (map? data)
@@ -239,7 +242,7 @@
                                 (implies (contains? model :values)
                                          (every? :valid? (vals entries)))
                                 (implies (contains? model :condition-model)
-                                         (:valid? (-describe context (:condition-model model) data))))]
+                                         (-valid? context (:condition-model model) data)))]
                 {:valid? valid?
                  :desc (into {} (map (fn [[k v]] [(:desc k) (:desc v)])) entries)})
               {:valid? false})
@@ -254,7 +257,7 @@
                  valid? (and (implies (contains? model :entries)
                                       (every? :valid? (vals entries)))
                              (implies (contains? model :condition-model)
-                                      (:valid? (-describe context (:condition-model model) data))))]
+                                      (-valid? context (:condition-model model) data)))]
              {:valid? valid?
               :desc (into {} (map (fn [[k v]] [k (:desc v)])) entries)})
            {:valid? false})
@@ -279,7 +282,7 @@
                                                  (implies (contains? model :elements-model)
                                                           (every? :valid? entries))
                                                  (implies (contains? model :condition-model)
-                                                          (:valid? (-describe context (:condition-model model) data))))]
+                                                          (-valid? context (:condition-model model) data)))]
                                  {:valid? valid?
                                   :desc (mapv :desc entries)})
                                {:valid? false})
@@ -305,9 +308,16 @@
                        (if (seq seq-descriptions)
                          {:desc (:desc (first seq-descriptions))
                           :valid? (implies (contains? model :condition-model)
-                                           (:valid? (-describe context (:condition-model model) data)))}
+                                           (-valid? context (:condition-model model) data))}
                          {:valid? false}))
                      {:valid? false})
+    :transform (if (-valid? context (:outer-model model) data)
+                 (let [description (-describe context (:inner-model model) ((:outer->inner model identity) data))]
+                   (if (:valid? description)
+                     {:valid? true
+                      :desc ((:outer<-inner model identity) (:desc description))}
+                     {:valid? false}))
+                 {:valid? false})
     :let (-describe (into context (:bindings model)) (:body model) data)
     :ref (-describe context (get context (:key model)) data)))
 
