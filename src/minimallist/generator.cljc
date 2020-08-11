@@ -100,7 +100,7 @@
                                                                             [stack walked-bindings]
                                                                             (map-indexed vector entries)))))
                        :transform (-> [[stack walked-bindings] model]
-                                      (reduce-update :child-model walk (conj path :child-model)))
+                                      (reduce-update :inner-model walk (conj path :inner-model)))
                        :let (let [[[stack' walked-bindings'] walked-body] (walk [(conj stack {:bindings (:bindings model)
                                                                                               :path (conj path :bindings)})
                                                                                  walked-bindings]
@@ -171,7 +171,7 @@
                                                (map (comp ::leaf-distance :model)))]
                             (when (every? some? distances)
                               (inc (reduce max 0 distances))))
-                   :transform (some-> (-> model :child-model ::leaf-distance) inc)
+                   :transform (some-> (-> model :inner-model ::leaf-distance) inc)
                    :let (some-> (-> model :body ::leaf-distance) inc)
                    :ref (let [key (:key model)
                               index (find-stack-index stack key)
@@ -224,7 +224,7 @@
                                           (map (comp ::min-cost :model)))
                                 content-cost (when (every? some? vals) (reduce + vals))]
                             (some-> content-cost (+ container-cost)))
-                   :transform (some-> (::min-cost (:child-model model)) inc)
+                   :transform (some-> (::min-cost (:inner-model model)) inc)
                    :let (::min-cost (:body model))
                    :ref (let [key (:key model)
                               index (find-stack-index stack key)]
@@ -495,9 +495,9 @@
                                                 inside-list? (gen/fmap (partial apply list))))))
                                 (contains? model :condition-model) (gen/such-that (partial m/valid? context (:condition-model model))))
 
-        :transform (cond->> (generator context (:child-model model) budget)
-                     (contains? model :construct) (gen/fmap (:construct model))
-                     (contains? model :condition-model) (gen/such-that (partial m/valid? context (:condition-model model))))
+        :transform (->> (generator context (:inner-model model) budget)
+                        (gen/fmap (:outer<-inner model identity))
+                        (gen/such-that (partial m/valid? context (:outer-model model))))
 
         :let (generator (merge context (:bindings model)) (:body model) budget)
 

@@ -132,9 +132,8 @@
                                  (-valid? context (:count-model model) (count data)))
                         (implies (contains? model :condition-model)
                                  (-valid? context (:condition-model model) data)))
-    :transform (and (implies (contains? model :condition-model)
-                             (-valid? context (:condition-model model) data))
-                    (-valid? context (:child-model model) ((:destruct model) data)))
+    :transform (and (-valid? context (:outer-model model) data)
+                    (-valid? context (:inner-model model) ((:outer->inner model identity) data)))
     :let (-valid? (into context (:bindings model)) (:body model) data)
     :ref (-valid? context (get context (:key model)) data)))
 
@@ -312,12 +311,11 @@
                                            (-valid? context (:condition-model model) data))}
                          {:valid? false}))
                      {:valid? false})
-    :transform (if (implies (contains? model :condition-model)
-                            (-valid? context (:condition-model model) data))
-                 (let [description (-describe context (:child-model model) ((:destruct model) data))]
+    :transform (if (-valid? context (:outer-model model) data)
+                 (let [description (-describe context (:inner-model model) ((:outer->inner model identity) data))]
                    (if (:valid? description)
                      {:valid? true
-                      :desc ((:construct model) (:desc description))}
+                      :desc ((:outer<-inner model identity) (:desc description))}
                      {:valid? false}))
                  {:valid? false})
     :let (-describe (into context (:bindings model)) (:body model) data)

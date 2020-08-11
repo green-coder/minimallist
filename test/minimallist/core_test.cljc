@@ -226,10 +226,10 @@
                     [:div {:a 1} "hei" [:p {} {} "bonjour"]]]
 
                    ;; transform
-                   (-> (h/transform (h/sequence-of (h/enum #{"A" "T" "G" "C"}))
-                                    #(mapv str (seq %))
-                                    #(apply str %))
-                       (h/with-condition (h/fn string?)))
+                   (h/transform (h/fn string?)
+                                (h/sequence-of (h/enum #{"A" "T" "G" "C"}))
+                                #(mapv str (seq %))
+                                #(apply str %))
                    ["" "A" "CGATCAT"]
                    [:foobar "CGAUCAU" "AOEU"]
 
@@ -452,10 +452,10 @@
                     [1 "a" 2 "b" 3 "c"] :invalid]
 
                    ;; transform
-                   (-> (h/transform (h/sequence-of (h/enum #{"A" "T" "G" "C"}))
-                                    #(mapv str (seq %))
-                                    #(apply str %))
-                       (h/with-condition (h/fn string?)))
+                   (h/transform (h/fn string?)
+                                (h/sequence-of (h/enum #{"A" "T" "G" "C"}))
+                                #(mapv str (seq %))
+                                #(apply str %))
                    ["" ""
                     "A" "A"
                     "CGATCAT" "CGATCAT"
