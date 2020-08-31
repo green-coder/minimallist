@@ -11,7 +11,7 @@ A minimalist data driven data model library, inspired by [Clojure Spec](https://
 
 ```clojure
 (ns your-namespace
-  (:require [minimallist.core :refer [valid?]]
+  (:require [minimallist.core :refer [valid? describe]]
             [minimallist.helper :as h]))
 
 (def hiccup-model
