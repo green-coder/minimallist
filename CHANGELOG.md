@@ -7,7 +7,10 @@ Versions prior to v0.1.0 are considered experimental, their API may change.
 
 ## [Unreleased]
 
+## [0.0.7] - 2020-09-20
+
 ### Fixed
+- A link in the documentation.
 - :fn with-condition in the `describe` function.
   Updated the minimap model to reflect that with-condition is valid for the :fn nodes.
 - Throw an error when a reference cannot be resolved in the model, instead of just let
