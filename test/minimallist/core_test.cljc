@@ -350,6 +350,14 @@
                     [1 2] :invalid
                     [1] :invalid]
 
+                   (h/tuple (h/fn int?)
+                            [:text (h/fn string?)])
+                   [[1 "a"] {:text "a"}]
+
+                   (h/tuple [:number (h/fn int?)]
+                            [:text (h/fn string?)])
+                   [[1 "a"] {:number 1, :text "a"}]
+
                    ;; sequence - :count-model
                    (-> (h/sequence-of (h/fn any?))
                        (h/with-count (h/val 3)))

@@ -288,7 +288,16 @@
                                                  (implies (contains? model :condition-model)
                                                           (:valid? (-describe context (:condition-model model) data))))]
                                  {:valid? valid?
-                                  :desc (mapv :desc entries)})
+                                  :desc (if (and (= (:type model) :sequence)
+                                                 (some #(contains? % :key) (:entries model)))
+                                          (->> (map (fn [model-entry described-entry]
+                                                      (when (contains? model-entry :key)
+                                                        [(:key model-entry) (:desc described-entry)]))
+                                                    (:entries model)
+                                                    entries)
+                                               (filter some?)
+                                               (into {}))
+                                          (mapv :desc entries))})
                                {:valid? false})
     :alt (let [[key entry] (first (into []
                                         (comp (map-indexed (fn [index entry]

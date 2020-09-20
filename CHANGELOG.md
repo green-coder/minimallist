@@ -7,6 +7,11 @@ Versions prior to v0.1.0 are considered experimental, their API may change.
 
 ## [Unreleased]
 
+### Changed
+
+- `describe` on a tuple where at least one entry has a defined :key will return
+  a map of the entries with a key instead of a vector of all the entries.
+
 ## [0.0.7] - 2020-09-20
 
 ### Fixed
