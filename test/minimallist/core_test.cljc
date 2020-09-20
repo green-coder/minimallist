@@ -253,7 +253,10 @@
       (doseq [data valid-coll]
         (is (valid? model data)))
       (doseq [data invalid-coll]
-        (is (not (valid? model data)))))))
+        (is (not (valid? model data))))))
+
+  (is (thrown? #?(:clj Exception :cljs js/Object)
+               (valid? (h/let [] (h/ref 'foo)) 'bar))))
 
 
 (deftest describe-test
@@ -477,4 +480,7 @@
     (doseq [[model data-description-pairs] (partition 2 test-data)]
       (doseq [[data description] (partition 2 data-description-pairs)]
         (is (= [data (describe model data)]
-               [data description]))))))
+               [data description])))))
+
+  (is (thrown? #?(:clj Exception :cljs js/Object)
+             (describe (h/let [] (h/ref 'foo)) 'bar))))

@@ -41,6 +41,11 @@
      ~consequence
      true))
 
+(defn- resolve-ref [context key]
+  (when-not (contains? context key)
+   (throw (ex-info "Cannot resolve reference." {:context context, :key key})))
+  (get context key))
+
 (declare -valid?)
 
 (defn- left-overs
@@ -68,7 +73,7 @@
                    (drop (:min model))
                    (apply concat))
       :let (left-overs (into context (:bindings model)) (:body model) seq-data)
-      :ref (left-overs context (get context (:key model)) seq-data))
+      :ref (left-overs context (resolve-ref context (:key model)) seq-data))
     (if (and seq-data
              (-valid? context (dissoc model :inlined) (first seq-data)))
       [(next seq-data)]
@@ -132,7 +137,7 @@
                         (implies (contains? model :condition-model)
                                  (-valid? context (:condition-model model) data)))
     :let (-valid? (into context (:bindings model)) (:body model) data)
-    :ref (-valid? context (get context (:key model)) data)))
+    :ref (-valid? context (resolve-ref context (:key model)) data)))
 
 (declare -describe)
 
@@ -185,7 +190,7 @@
                    (reverse) ; longest repetitions first
                    (apply concat))
       :let (sequence-descriptions (into context (:bindings model)) (:body model) seq-data)
-      :ref (sequence-descriptions context (get context (:key model)) seq-data))
+      :ref (sequence-descriptions context (resolve-ref context (:key model)) seq-data))
     (if seq-data
       (let [description (-describe context (dissoc model :inlined) (first seq-data))]
         (if (:valid? description)
@@ -311,7 +316,7 @@
                          {:valid? false}))
                      {:valid? false})
     :let (-describe (into context (:bindings model)) (:body model) data)
-    :ref (-describe context (get context (:key model)) data)))
+    :ref (-describe context (resolve-ref context (:key model)) data)))
 
 ;; TODO: Treat the attributes independently of the type of the node in which they appear.
 ;;       That's a kind of composition pattern a-la-unity.
