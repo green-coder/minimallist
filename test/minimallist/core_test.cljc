@@ -40,6 +40,16 @@
                    [1]
                    [2]
 
+                   (-> (h/fn int?)
+                       (h/with-condition (h/fn odd?)))
+                   [1]
+                   [2]
+
+                   (-> (h/fn symbol?)
+                       (h/with-condition (h/fn (complement #{'if 'val}))))
+                   ['a]
+                   ['if]
+
                    ;; enum
                    (h/enum #{1 "2" :3})
                    [1 "2" :3]
@@ -251,6 +261,16 @@
                    (h/fn #(= 1 %))
                    [1 1
                     2 :invalid]
+
+                   (-> (h/fn int?)
+                       (h/with-condition (h/fn odd?)))
+                   [1 1
+                    2 :invalid]
+
+                   (-> (h/fn symbol?)
+                       (h/with-condition (h/fn (complement #{'if 'val}))))
+                   ['a 'a
+                    'if :invalid]
 
                    ;; enum
                    (h/enum #{1 "2" false nil})

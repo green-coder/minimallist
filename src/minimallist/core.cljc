@@ -197,7 +197,9 @@
 (defn- -describe
   [context model data]
   (case (:type model)
-    :fn {:valid? ((:fn model) data)
+    :fn {:valid? (and ((:fn model) data)
+                      (implies (contains? model :condition-model)
+                               (:valid? (-describe context (:condition-model model) data))))
          :desc data}
     :enum {:valid? (contains? (:values model) data)
            :desc data}

@@ -5,8 +5,9 @@
 ;; A model of the model format accepted by Minimallist's functions.
 ;; Use it to validate your models when you have problems which you don't understand, just in case.
 (def minimap-model
-  (h/let ['model (h/alt [:fn (h/map [:type (h/val :fn)]
-                                    [:fn (h/fn fn?)])]
+  (h/let ['model (h/alt [:fn (-> (h/map [:type (h/val :fn)]
+                                        [:fn (h/fn fn?)])
+                                 (h/with-optional-entries [:condition-model (h/ref 'model)]))]
                         [:enum (h/map [:type (h/val :enum)]
                                       [:values (h/set-of (h/fn any?))])]
                         [:and-or (h/map [:type (h/enum #{:and :or})]
