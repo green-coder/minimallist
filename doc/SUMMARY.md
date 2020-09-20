@@ -2,7 +2,7 @@
 
 ## Introduction
 
-* [Introduction](README.md)
+* [Introduction](introduction.md)
 * [Design Choices](design_choices.md)
 
 ## Model
