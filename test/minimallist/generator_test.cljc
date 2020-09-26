@@ -220,21 +220,27 @@
                         ::mg/min-cost 1}}]
      ::mg/min-cost 2}
 
-    (h/map-of (h/fn keyword?) (h/fn int?))
+    (h/map-of (h/vector (h/fn keyword?) (h/fn int?)))
     {:type :map-of
-     :keys {:model {:type :fn
-                    ::mg/min-cost 1}}
-     :values {:model {:type :fn
-                      ::mg/min-cost 1}}
+     :entry-model {:type :sequence
+                   :coll-type :vector
+                   :entries [{:model {:type :fn
+                                      ::mg/min-cost 1}}
+                             {:model {:type :fn
+                                      ::mg/min-cost 1}}]
+                   ::mg/min-cost 3}
      ::mg/min-cost 1}
 
-    (-> (h/map-of (h/fn keyword?) (h/fn int?))
+    (-> (h/map-of (h/vector (h/fn keyword?) (h/fn int?)))
         (h/with-count (h/enum #{3 4})))
     {:type :map-of
-     :keys {:model {:type :fn
-                    ::mg/min-cost 1}}
-     :values {:model {:type :fn
-                      ::mg/min-cost 1}}
+     :entry-model {:type :sequence
+                   :coll-type :vector
+                   :entries [{:model {:type :fn
+                                      ::mg/min-cost 1}}
+                             {:model {:type :fn
+                                      ::mg/min-cost 1}}]
+                   ::mg/min-cost 3}
      :count-model {:type :enum
                    :values #{3 4}}
      ::mg/min-cost 7}
@@ -292,7 +298,7 @@
                        (h/with-count (h/enum #{1 2 3 10}))
                        (h/with-condition (h/fn (comp #{1 2 3} count))))))
 
-  (tcg/sample (gen (h/map-of fn-int? fn-string?)))
+  (tcg/sample (gen (h/map-of (h/vector fn-int? fn-simple-symbol?))))
 
   (tcg/sample (gen (-> (h/map [:a fn-int?])
                        (h/with-optional-entries [:b fn-string?]))))
@@ -324,10 +330,10 @@
   (tcg/sample (gen (h/let ['node (h/set-of (h/ref 'node))]
                           (h/ref 'node))))
 
-  (tcg/sample (gen (h/let ['node (h/map-of fn-int? (h/ref 'node))]
+  (tcg/sample (gen (h/let ['node (h/map-of (h/vector fn-int? (h/ref 'node)))]
                           (h/ref 'node)) 50))
 
-  (tcg/sample (gen (h/let ['node (h/map-of fn-keyword? (h/ref 'node))]
+  (tcg/sample (gen (h/let ['node (h/map-of (h/vector fn-keyword? (h/ref 'node)))]
                           (h/ref 'node)) 100) 1)
 
   (tcg/sample (gen (h/map [:a fn-int?])))
@@ -372,7 +378,7 @@
     (is (every? (partial valid? model)
                 (tcg/sample (gen model)))))
 
-  (let [model (h/map-of fn-int? fn-string?)]
+  (let [model (h/map-of (h/vector fn-int? fn-string?))]
     (is (every? (partial valid? model)
                 (tcg/sample (gen model)))))
 
@@ -455,7 +461,7 @@
                 (tcg/sample (gen model)))))
 
   ;; Budget-based limit on variable map size.
-  (let [model (h/let ['node (h/map-of fn-int? (h/ref 'node))]
+  (let [model (h/let ['node (h/map-of (h/vector fn-int? (h/ref 'node)))]
                 (h/ref 'node))]
     (is (every? (partial valid? model)
                 (tcg/sample (gen model)))))

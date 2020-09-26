@@ -87,8 +87,7 @@
                                    (contains? model :elements-model)
                                    (reduce-update :elements-model walk (conj path :elements-model)))
                        :map-of (-> [[stack walked-bindings] model]
-                                   (reduce-update-in [:keys :model] walk (conj path :keys :model))
-                                   (reduce-update-in [:values :model] walk (conj path :values :model)))
+                                   (reduce-update :entry-model walk (conj path :entry-model)))
                        (:and :or
                         :map :sequence
                         :alt :cat) (cond-> [[stack walked-bindings] model]
@@ -144,11 +143,10 @@
   [model stack path]
   (let [distance (case (:type model)
                    (:fn :enum) 0
-                   :map-of (let [key-distance (-> model :keys :model ::leaf-distance)
-                                 value-distance (-> model :values :model ::leaf-distance)]
+                   :map-of (let [entry-distance (-> model :entry-model ::leaf-distance)]
                              (cond
                                (zero? (min-count-value model)) 0
-                               (and key-distance value-distance) (inc (max key-distance value-distance))))
+                               (some? entry-distance) (inc entry-distance)))
                    (:set-of
                     :sequence-of
                     :repeat) (if (or (not (contains? model :elements-model))
@@ -186,11 +184,12 @@
                    (:fn :enum) (::min-cost model 1)
                    :map-of (let [container-cost 1
                                  min-count (min-count-value model)
-                                 key-min-cost (-> model :keys :model ::min-cost)
-                                 value-min-cost (-> model :values :model ::min-cost)
+                                 entry-min-cost (-> model :entry-model ::min-cost
+                                                    ; cancel the cost of the entry's vector
+                                                    (some-> dec))
                                  content-cost (if (zero? min-count) 0
-                                                (when (and min-count key-min-cost value-min-cost)
-                                                  (* min-count (+ key-min-cost value-min-cost))))]
+                                                (when (and min-count entry-min-cost)
+                                                  (* min-count entry-min-cost)))]
                              (some-> content-cost (+ container-cost)))
                    (:set-of
                     :sequence-of
@@ -392,10 +391,8 @@
 
         :map-of (cond->> (let [budget (max 0 (dec budget)) ; the collection itself costs 1
                                count-model (:count-model model)
-                               keys-model (-> model :keys :model)
-                               values-model (-> model :values :model)
-                               entry-min-cost (+ (::min-cost keys-model)
-                                                 (::min-cost values-model))
+                               entry-model (:entry-model model)
+                               entry-min-cost (::min-cost entry-model)
                                coll-max-size (int (/ budget entry-min-cost))
                                coll-size-gen (if count-model
                                                (generator context count-model 0)
@@ -407,10 +404,7 @@
                                entries-gen (gen/bind budgets-gen
                                                      (fn [entry-budgets]
                                                        (apply gen/tuple
-                                                              (mapv (fn [entry-budget]
-                                                                      (gen/tuple
-                                                                        (generator context keys-model entry-budget)
-                                                                        (generator context values-model entry-budget)))
+                                                              (mapv (partial generator context entry-model)
                                                                     entry-budgets))))
                                map-gen (gen/fmap (fn [entries]
                                                    (into {} entries))

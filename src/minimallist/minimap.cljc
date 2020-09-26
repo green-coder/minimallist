@@ -16,10 +16,9 @@
                                      (h/with-optional-entries [:count-model (h/ref 'model)]
                                                               [:elements-model (h/ref 'model)]
                                                               [:condition-model (h/ref 'model)]))]
-                        [:map-of (-> (h/map [:type (h/val :map-of)])
-                                     (h/with-optional-entries [:keys (h/map [:model (h/ref 'model)])]
-                                                              [:values (h/map [:model (h/ref 'model)])]
-                                                              [:condition-model (h/ref 'model)]))]
+                        [:map-of (-> (h/map [:type (h/val :map-of)]
+                                            [:entry-model (h/ref 'model)])
+                                     (h/with-optional-entries [:condition-model (h/ref 'model)]))]
                         [:map (-> (h/map [:type (h/val :map)])
                                   (h/with-optional-entries [:entries (h/vector-of (-> (h/map [:key (h/fn any?)]
                                                                                              [:model (h/ref 'model)])

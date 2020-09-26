@@ -89,8 +89,7 @@
                     {:a 1, :b 'bar, [1 2 3] "soleil !"}]
 
                    ;; map, keys and values
-                   (h/map-of (h/fn keyword?)
-                             (h/fn int?))
+                   (h/map-of (h/vector (h/fn keyword?) (h/fn int?)))
                    [{} {:a 1, :b 2}]
                    [{:a 1, :b "2"} [[:a 1] [:b 2]] {true 1, false 2}]
 
@@ -317,15 +316,23 @@
                     ; extra entry
                     {:a 1, :b 2, :c 3} {:a 1, :b 2}]
 
-                   ;; map-of - :keys
-                   (h/map-of (h/fn keyword?) (h/fn any?))
-                   [{:a 1, :b 2} {:a 1, :b 2}
+                   ;; map-of - entry-model
+                   (h/map-of (h/vector (h/fn keyword?) (h/fn int?)))
+                   [{:a 1, :b 2} [[:a 1] [:b 2]]
                     {"a" 1} :invalid]
 
-                   ;; map-of - :values
-                   (h/map-of (h/fn any?) (h/fn int?))
-                   [{:a 1, "b" 2} {:a 1, "b" 2}
-                    {:a "1"} :invalid]
+                   ;; map-of - real world use case
+                   (h/map-of (h/alt [:symbol (h/vector (h/fn simple-symbol?) (h/fn keyword?))]
+                                    [:keys (h/vector (h/val :keys) (h/vector-of (h/fn symbol?)))]
+                                    [:as (h/vector (h/val :as) (h/fn simple-symbol?))]))
+                   '[{first-name :first-name
+                      last-name :last-name
+                      :keys [foo bar]
+                      :as foobar}
+                     [[:symbol [first-name :first-name]]
+                      [:symbol [last-name :last-name]]
+                      [:keys [:keys [foo bar]]]
+                      [:as [:as foobar]]]]
 
                    ;; sequence - :elements-model
                    (h/sequence-of (h/fn int?))

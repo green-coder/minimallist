@@ -11,6 +11,8 @@ Versions prior to v0.1.0 are considered experimental, their API may change.
 
 - `describe` on a tuple where at least one entry has a defined :key will return
   a map of the entries with a key instead of a vector of all the entries.
+- :map-of no longer work with a key model and/or a value model. It works with an entry model insead.
+  `describe` on a :map-of returns a vector of the description of its entries.
 
 ## [0.0.7] - 2020-09-20
 

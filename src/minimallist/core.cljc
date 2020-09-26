@@ -105,10 +105,8 @@
                                              (-valid? context (:model entry) (get data (:key entry)))
                                              (:optional entry)))
                                          (:entries model)))
-                        (implies (contains? model :keys)
-                                 (every? (partial -valid? context (-> model :keys :model)) (keys data)))
-                        (implies (contains? model :values)
-                                 (every? (partial -valid? context (-> model :values :model)) (vals data)))
+                        (implies (contains? model :entry-model)
+                                 (every? (partial -valid? context (:entry-model model)) data))
                         (implies (contains? model :condition-model)
                                  (-valid? context (:condition-model model) data)))
     (:sequence-of :sequence) (and (sequential? data)
@@ -218,9 +216,7 @@
          :desc data}
     :set-of (if (set? data)
               (let [entries (when (contains? model :elements-model)
-                              (into #{}
-                                    (map (partial -describe context (:elements-model model)))
-                                    data))
+                              (mapv (partial -describe context (:elements-model model)) data))
                     valid? (and (implies (contains? model :elements-model)
                                          (every? :valid? entries))
                                 (implies (contains? model :count-model)
@@ -230,25 +226,12 @@
                 {:valid? valid?
                  :desc (into #{} (map :desc) entries)}))
     :map-of (if (map? data)
-              (let [key-model (-> model :keys :model)
-                    values-model (-> model :values :model)
-                    entries (into {}
-                                  (map (fn [[key value]]
-                                         [(if key-model
-                                            (-describe context key-model key)
-                                            {:valid? true, :desc key})
-                                          (if values-model
-                                            (-describe context values-model value)
-                                            {:valid? true, :desc key})]))
-                                  data)
-                    valid? (and (implies (contains? model :keys)
-                                         (every? :valid? (keys entries)))
-                                (implies (contains? model :values)
-                                         (every? :valid? (vals entries)))
+              (let [entries (mapv (partial -describe context (:entry-model model)) data)
+                    valid? (and (every? :valid? entries)
                                 (implies (contains? model :condition-model)
                                          (:valid? (-describe context (:condition-model model) data))))]
                 {:valid? valid?
-                 :desc (into {} (map (fn [[k v]] [(:desc k) (:desc v)])) entries)})
+                 :desc (mapv :desc entries)})
               {:valid? false})
     :map (if (map? data)
            (let [entries (into {}

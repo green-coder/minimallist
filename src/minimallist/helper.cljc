@@ -121,12 +121,10 @@
    :elements-model elements-model})
 
 (defn map-of
-  "Model of a hashmap associating values of a specific model
-   to values of another specific model."
-  [keys-model values-model]
+  "Model of a hashmap made of entries (2-vector) of a specific model."
+  [entry-model]
   {:type :map-of
-   :keys {:model keys-model}
-   :values {:model values-model}})
+   :entry-model entry-model})
 
 (defn sequence-of
   "Model of a sequence of values, all matching a specific model."
