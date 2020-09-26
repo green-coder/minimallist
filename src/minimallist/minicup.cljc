@@ -87,7 +87,6 @@
                      [:map (h/in-vector (h/cat (h/val :map)
                                                (h/+ (entry-of (h/ref 'model)))))]
                      [:map-of (h/vector (h/val :map-of)
-                                        (h/ref 'model)
                                         (h/ref 'model))]
                      [:sequence-of (h/in-vector (h/cat (h/val :sequence-of)
                                                        (h/? (h/map [:count {:optional true} (h/ref 'model)]))

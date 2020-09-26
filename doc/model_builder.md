@@ -104,7 +104,7 @@ outside of a `:condition-model` field, you need to add your own generator to the
 (h/set-of (h/fn keyword?))
 
 ;; Map of id->name.
-(h/map-of (h/fn int?) (h/fn string?))
+(h/map-of (h/vector (h/fn int?) (h/fn string?)))
 
 ;; Sequence of numbers, either in a list or in a vector.
 (h/sequence-of (h/fn int?))

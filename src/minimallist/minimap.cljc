@@ -61,8 +61,7 @@
                                                               [:condition-model (h/ref 'model)])
                                      (h/with-condition (h/fn #(<= (:min %) (:max %)))))]
                         [:let (h/map [:type (h/val :let)]
-                                     [:bindings (h/map-of (h/fn any?)
-                                                          (h/ref 'model))]
+                                     [:bindings (h/map-of (h/vector (h/fn any?) (h/ref 'model)))]
                                      [:body (h/ref 'model)])]
                         [:ref (h/map [:type (h/val :ref)]
                                      [:key (h/fn any?)])])]

@@ -17,6 +17,6 @@
 ;;     clj -Spom
 ;; - build the jar:
 ;;     clojure -A:depstar -m hf.depstar.jar minimallist.jar -v
+;; - add a tag "v0.0.x" to the latest commit and push to repo
 ;; - deploy:
 ;;     mvn deploy:deploy-file -Dfile=minimallist.jar -DpomFile=pom.xml -DrepositoryId=clojars -Durl=https://clojars.org/repo/
-;; - add a tag "v0.0.x" to the latest commit and push to repo

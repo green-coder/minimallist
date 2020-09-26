@@ -16,7 +16,7 @@ A minimalist data driven data model library, inspired by [Clojure Spec](https://
 
 (def hiccup-model
   (h/let ['hiccup (h/alt [:node (h/in-vector (h/cat [:name (h/fn keyword?)]
-                                                    [:props (h/? (h/map-of (h/fn keyword?) (h/fn any?)))]
+                                                    [:props (h/? (h/map-of (h/vector (h/fn keyword?) (h/fn any?))))]
                                                     [:children (h/* (h/not-inlined (h/ref 'hiccup)))]))]
                          [:primitive (h/alt [:nil (h/fn nil?)]
                                             [:boolean (h/fn boolean?)]
@@ -30,8 +30,8 @@ A minimalist data driven data model library, inspired by [Clojure Spec](https://
 
 (describe hiccup-model [:div {:class [:foo :bar]}
                         [:p "Hello, world of data"]])
-;=> [:node {:name :div,
-;           :props [{:class [:foo :bar]}],
+;=> [:node {:name :div
+;           :props [[[:class [:foo :bar]]]]
 ;           :children [[:node {:name :p
 ;                              :props []
 ;                              :children [[:primitive [:text "Hello, world of data"]]]}]]}]
