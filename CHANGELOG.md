@@ -7,6 +7,8 @@ Versions prior to v0.1.0 are considered experimental, their API may change.
 
 ## [Unreleased]
 
+## [0.0.8] - 2020-09-26
+
 ### Changed
 
 - `describe` on a tuple where at least one entry has a defined :key will return
