@@ -224,7 +224,7 @@
                                 (implies (contains? model :condition-model)
                                          (:valid? (-describe context (:condition-model model) data))))]
                 {:valid? valid?
-                 :desc (into #{} (map :desc) entries)}))
+                 :desc (mapv :desc entries)}))
     :map-of (if (map? data)
               (let [entries (mapv (partial -describe context (:entry-model model)) data)
                     valid? (and (every? :valid? entries)

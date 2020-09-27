@@ -300,7 +300,7 @@
 
                    ;; set
                    (h/set-of (h/fn int?))
-                   [#{1} #{1}]
+                   [#{1 2} [1 2]]
 
                    ;; map
                    (h/map [:a {:optional true} (h/fn int?)]
