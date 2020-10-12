@@ -42,12 +42,17 @@
      true))
 
 (defn- comp-bindings [context bindings]
-  (into context bindings))
+  (conj context bindings))
 
 (defn- resolve-ref [context key]
-  (when-not (contains? context key)
-   (throw (ex-info "Cannot resolve reference." {:context context, :key key})))
-  [context (get context key)])
+  (loop [bindings-vector context]
+    (if (seq bindings-vector)
+      (let [bindings (peek bindings-vector)]
+        (if (contains? bindings key)
+          [bindings-vector (get bindings key)]
+          (recur (pop bindings-vector))))
+      (throw (ex-info (str "Cannot resolve reference " key)
+                      {:context context, :key key})))))
 
 (declare -valid?)
 
@@ -327,10 +332,8 @@
 
 (defn valid?
   "Return true if the data matches the model, false otherwise."
-  ([model data]
-   (valid? {} model data))
-  ([context model data]
-   (boolean (-valid? context model data))))
+  [model data]
+  (boolean (-valid? [] model data)))
 
 ;; WIP, do not use!
 (defn ^:no-doc explain
@@ -342,7 +345,7 @@
   ([model data]
    (describe model data {}))
   ([model data options]
-   (let [description (-describe {} model data)]
+   (let [description (-describe [] model data)]
      (if (:valid? description)
        (:desc description)
        (:invalid-result options :invalid)))))

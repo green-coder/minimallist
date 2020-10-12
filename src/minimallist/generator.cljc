@@ -322,8 +322,9 @@
                                                      budgets))]
                       (into [] cat sequences)))
 
-          :let (sequence-generator (merge context (:bindings model)) (:body model) budget)
-          :ref (sequence-generator context (get context (:key model)) budget)))
+          :let (sequence-generator (#'m/comp-bindings context (:bindings model)) (:body model) budget)
+          :ref (let [[context model] (#'m/resolve-ref context (:key model))]
+                 (sequence-generator context model budget))))
     (gen/fmap vector
               (generator context (dissoc model :inlined) budget))))
 
@@ -387,7 +388,7 @@
                                                     (rose/pure elements-in-set)
                                                     (recur next-rng (rest coll-sizes)))))))))]
                   (cond->> set-gen
-                           (contains? model :condition-model) (gen/such-that (partial m/valid? context (:condition-model model)))))
+                           (contains? model :condition-model) (gen/such-that (partial #'m/-valid? context (:condition-model model)))))
 
         :map-of (cond->> (let [budget (max 0 (dec budget)) ; the collection itself costs 1
                                count-model (:count-model model)
@@ -410,7 +411,7 @@
                                                    (into {} entries))
                                                  entries-gen)]
                            (cond->> map-gen
-                             (contains? model :condition-model) (gen/such-that (partial m/valid? context (:condition-model model))))))
+                             (contains? model :condition-model) (gen/such-that (partial #'m/-valid? context (:condition-model model))))))
 
         :map (let [budget (max 0 (dec budget)) ; the collection itself costs 1
                    possible-entries (filterv (comp ::min-cost :model) (:entries model))
@@ -431,7 +432,7 @@
                                           selected-entries
                                           entry-budgets)))]
                (cond->> map-gen
-                 (contains? model :condition-model) (gen/such-that (partial m/valid? context (:condition-model model)))))
+                 (contains? model :condition-model) (gen/such-that (partial #'m/-valid? context (:condition-model model)))))
 
         (:sequence-of :sequence) (let [budget (max 0 (dec budget)) ; the collection itself costs 1
                                        entries (:entries model)
@@ -472,7 +473,7 @@
                                                              inside-list? (apply list)))
                                                          (gen/tuple coll-gen inside-list?-gen))]
                                    (cond->> seq-gen
-                                     (contains? model :condition-model) (gen/such-that (partial m/valid? context (:condition-model model)))))
+                                     (contains? model :condition-model) (gen/such-that (partial #'m/-valid? context (:condition-model model)))))
 
         (:cat :repeat) (cond->> (gen/bind gen/boolean
                                           (fn [random-bool]
@@ -483,11 +484,12 @@
                                                                  random-bool)]
                                               (cond->> gen
                                                 inside-list? (gen/fmap (partial apply list))))))
-                                (contains? model :condition-model) (gen/such-that (partial m/valid? context (:condition-model model))))
+                                (contains? model :condition-model) (gen/such-that (partial #'m/-valid? context (:condition-model model))))
 
-        :let (generator (merge context (:bindings model)) (:body model) budget)
+        :let (generator (#'m/comp-bindings context (:bindings model)) (:body model) budget)
 
-        :ref (generator context (get context (:key model)) budget))))
+        :ref (let [[context model] (#'m/resolve-ref context (:key model))]
+               (generator context model budget)))))
 
 (defn decorate-model
   "Analyzes and decorates the model with information regarding 'distance to leaf' and 'minimal cost'."
@@ -511,6 +513,6 @@
                        {:model model
                         :decorated-model decorated-model})))
      (if budget
-       (generator {} decorated-model budget)
+       (generator [] decorated-model budget)
        (gen/sized (fn [size] ; size varies between 0 and 200
-                    (generator {} decorated-model size)))))))
+                    (generator [] decorated-model size)))))))
