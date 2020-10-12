@@ -245,8 +245,15 @@
                     [1 1 1 "hi" "hi" "hi"]]
                    [[1 1 "hi"]
                     [1 "hi" "hi"]
-                    [1 1 :no "hi" "hi"]]]]
+                    [1 1 :no "hi" "hi"]]
 
+                   ; let / ref - with shadowed local model
+                   (h/let ['foo (h/ref 'bar)
+                           'bar (h/fn int?)]
+                          (h/let ['bar (h/fn string?)]
+                                 (h/ref 'foo)))
+                   [1]
+                   ["hi"]]]
 
     (doseq [[model valid-coll invalid-coll] (partition 3 test-data)]
       (doseq [data valid-coll]
