@@ -253,7 +253,7 @@
                           (h/let ['bar (h/fn string?)]
                                  (h/ref 'foo)))
                    [1]
-                   ["wrong"]]]
+                   ["hi"]]]
 
     (doseq [[model valid-coll invalid-coll] (partition 3 test-data)]
       (doseq [data valid-coll]

@@ -41,10 +41,13 @@
      ~consequence
      true))
 
+(defn- comp-bindings [context bindings]
+  (into context bindings))
+
 (defn- resolve-ref [context key]
   (when-not (contains? context key)
    (throw (ex-info "Cannot resolve reference." {:context context, :key key})))
-  (get context key))
+  [context (get context key)])
 
 (declare -valid?)
 
@@ -72,8 +75,9 @@
                    (take (inc (:max model))) ; inc because it includes the "match zero times"
                    (drop (:min model))
                    (apply concat))
-      :let (left-overs (into context (:bindings model)) (:body model) seq-data)
-      :ref (left-overs context (resolve-ref context (:key model)) seq-data))
+      :let (left-overs (comp-bindings context (:bindings model)) (:body model) seq-data)
+      :ref (let [[context model] (resolve-ref context (:key model))]
+             (left-overs context model seq-data)))
     (if (and seq-data
              (-valid? context (dissoc model :inlined) (first seq-data)))
       [(next seq-data)]
@@ -134,8 +138,9 @@
                                  (-valid? context (:count-model model) (count data)))
                         (implies (contains? model :condition-model)
                                  (-valid? context (:condition-model model) data)))
-    :let (-valid? (into context (:bindings model)) (:body model) data)
-    :ref (-valid? context (resolve-ref context (:key model)) data)))
+    :let (-valid? (comp-bindings context (:bindings model)) (:body model) data)
+    :ref (let [[context model] (resolve-ref context (:key model))]
+           (-valid? context model data))))
 
 (declare -describe)
 
@@ -187,8 +192,9 @@
                    (drop (:min model))
                    (reverse) ; longest repetitions first
                    (apply concat))
-      :let (sequence-descriptions (into context (:bindings model)) (:body model) seq-data)
-      :ref (sequence-descriptions context (resolve-ref context (:key model)) seq-data))
+      :let (sequence-descriptions (comp-bindings context (:bindings model)) (:body model) seq-data)
+      :ref (let [[context model] (resolve-ref context (:key model))]
+             (sequence-descriptions context model seq-data)))
     (if seq-data
       (let [description (-describe context (dissoc model :inlined) (first seq-data))]
         (if (:valid? description)
@@ -307,8 +313,9 @@
                                            (:valid? (-describe context (:condition-model model) data)))}
                          {:valid? false}))
                      {:valid? false})
-    :let (-describe (into context (:bindings model)) (:body model) data)
-    :ref (-describe context (resolve-ref context (:key model)) data)))
+    :let (-describe (comp-bindings context (:bindings model)) (:body model) data)
+    :ref (let [[context model] (resolve-ref context (:key model))]
+           (-describe context model data))))
 
 ;; TODO: Treat the attributes independently of the type of the node in which they appear.
 ;;       That's a kind of composition pattern a-la-unity.
