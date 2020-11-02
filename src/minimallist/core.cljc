@@ -120,7 +120,7 @@
                                  (-valid? context (:condition-model model) data)))
     (:sequence-of :sequence) (and (sequential? data)
                                   ((-> (:coll-type model :any) {:any any?
-                                                                :list list?
+                                                                :list seq?
                                                                 :vector vector?}) data)
                                   (implies (contains? model :entries)
                                            (and (= (count (:entries model)) (count data))
@@ -136,7 +136,7 @@
                                            (-valid? context (:condition-model model) data)))
     (:cat :repeat) (and (sequential? data)
                         ((-> (:coll-type model :any) {:any any?
-                                                      :list list?
+                                                      :list seq?
                                                       :vector vector?}) data)
                         (some nil? (left-overs context (dissoc model :inlined) (seq data)))
                         (implies (contains? model :count-model)
@@ -270,7 +270,7 @@
                                                                                         data)
                                                         :else (map (fn [x] {:desc x}) data)))
                                      valid? (and (({:any any?
-                                                    :list list?
+                                                    :list seq?
                                                     :vector vector?} (:coll-type model :any)) data)
                                                  (implies (contains? model :entries)
                                                           (and (= (count (:entries model)) (count data))
@@ -306,7 +306,7 @@
               :desc [key (:desc entry)]}))
     (:cat :repeat) (if (and (sequential? data)
                             ((-> (:coll-type model :any) {:any any?
-                                                          :list list?
+                                                          :list seq?
                                                           :vector vector?}) data)
                             (implies (contains? model :count-model)
                                      (:valid? (-describe context (:count-model model) (count data)))))

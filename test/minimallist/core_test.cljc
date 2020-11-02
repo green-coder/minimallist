@@ -106,9 +106,8 @@
 
                    ;; sequence as a list
                    (h/list-of (h/fn int?))
-                   ['(1 2 3)]
-                   ['(1 :a) [1 2 3] #{1 2 3}
-                    #_`(1 2 ~3)]                            ; this is not a list in cljs
+                   ['(1 2 3) `(1 2 ~3)]
+                   ['(1 :a) [1 2 3] #{1 2 3}]
 
                    ;; sequence as a vector
                    (h/vector-of (h/fn int?))
@@ -345,6 +344,7 @@
                    (h/sequence-of (h/fn int?))
                    [[1 2 3] [1 2 3]
                     '(1 2 3) '(1 2 3)
+                    `(1 2 3) '(1 2 3)
                     [1 "2" 3] :invalid]
 
                    ;; sequence - :elements-model with condition
@@ -356,7 +356,14 @@
                    ;; sequence - :coll-type vector
                    (h/vector-of (h/fn any?))
                    [[1 2 3] [1 2 3]
-                    '(1 2 3) :invalid]
+                    '(1 2 3) :invalid
+                    `(1 2 3) :invalid]
+
+                   ;; sequence - :coll-type list
+                   (h/list-of (h/fn any?))
+                   [[1 2 3] :invalid
+                    '(1 2 3) '(1 2 3)
+                    `(1 2 3) '(1 2 3)]
 
                    ;; sequence - :entries
                    (h/tuple (h/fn int?) (h/fn string?))
