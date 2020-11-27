@@ -385,12 +385,12 @@
   (let [model (-> (h/map [:a fn-int?])
                   (h/with-optional-entries [:b fn-string?]))
         sample (tcg/sample (gen model) 100)]
-    (is (and (every? (partial valid? model) sample)
-             (every? (fn [element] (contains? element :a)) sample)
-             (some (fn [element] (contains? element :b)) sample)
-             (some (fn [element] (not (contains? element :b))) sample)
-             (some (fn [element] (and (contains? element :a)
-                                      (not (contains? element :b)))) sample))))
+    (is (every? (partial valid? model) sample))
+    (is (every? (fn [element] (contains? element :a)) sample))
+    (is (some (fn [element] (contains? element :b)) sample))
+    (is (some (fn [element] (not (contains? element :b))) sample))
+    (is (some (fn [element] (and (contains? element :a)
+                                 (not (contains? element :b)))) sample)))
 
   (let [model (-> (h/map)
                   (h/with-optional-entries
