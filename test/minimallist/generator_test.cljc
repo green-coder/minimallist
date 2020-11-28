@@ -385,12 +385,12 @@
   (let [model (-> (h/map [:a fn-int?])
                   (h/with-optional-entries [:b fn-string?]))
         sample (tcg/sample (gen model) 100)]
-    (is (every? (partial valid? model) sample))
-    (is (every? (fn [element] (contains? element :a)) sample))
-    (is (some (fn [element] (contains? element :b)) sample))
-    (is (some (fn [element] (not (contains? element :b))) sample))
-    (is (some (fn [element] (and (contains? element :a)
-                                 (not (contains? element :b)))) sample)))
+    (is (and (every? (partial valid? model) sample)
+             (every? (fn [element] (contains? element :a)) sample)
+             (some (fn [element] (contains? element :b)) sample)
+             (some (fn [element] (not (contains? element :b))) sample)
+             (some (fn [element] (and (contains? element :a)
+                                      (not (contains? element :b)))) sample))))
 
   (let [model (-> (h/map)
                   (h/with-optional-entries
@@ -483,17 +483,17 @@
   ;; Budget-based limit on optional entries in a map.
   (let [model (h/let ['node (-> (h/map [:a fn-int?])
                                 (h/with-optional-entries [:x (h/ref 'node)]
-                                  [:y (h/ref 'node)]
-                                  [:z (h/ref 'node)]))]
+                                                         [:y (h/ref 'node)]
+                                                         [:z (h/ref 'node)]))]
                 (h/ref 'node))]
     (is (every? (partial valid? model)
                 (tcg/sample (gen model)))))
 
-;;; Budget-based limit on number of occurrences in a repeat.
-                                        ;(let [model (h/let ['node (h/repeat 0 1 (h/ref 'node))]
-                                        ;              (h/ref 'node))]
-                                        ;  (is (every? (partial valid? model)
-                                        ;              (tcg/sample (gen model)))))
+  ;;; Budget-based limit on number of occurrences in a repeat.
+  ;(let [model (h/let ['node (h/repeat 0 1 (h/ref 'node))]
+  ;              (h/ref 'node))]
+  ;  (is (every? (partial valid? model)
+  ;              (tcg/sample (gen model)))))
 
   ;; Model impossible to generate.
   (let [model (h/let ['node (h/map [:a (h/ref 'node)])]
