@@ -421,7 +421,7 @@
                                                  (gen/choose (count required-entries) (count possible-entries))
                                                  (gen/return (count required-entries)))
                                      selected-entries (gen/fmap (fn [shuffled-optional-entries]
-                                                                  (->> (concat possible-entries shuffled-optional-entries)
+                                                                  (->> (concat required-entries shuffled-optional-entries)
                                                                        (take coll-size)))
                                                                 (gen/shuffle optional-entries))
                                      entry-budgets (let [min-costs (mapv (comp ::min-cost :model) selected-entries)]
