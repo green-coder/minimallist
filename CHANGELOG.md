@@ -7,6 +7,13 @@ Versions prior to v0.1.0 are considered experimental, their API may change.
 
 ## [Unreleased]
 
+## [0.0.9] - 2020-11-29
+
+### Fixed
+
+- A bug which selected the wrong context in recursive `let` nodes.
+- A bug on the generator of optional map entries - Thx to Andrew Foltz-Morrison for the bug report and the fix.
+
 ### Change
 
 - `describe` on a set now returns a vector instead of a set - it makes it easier to work with
