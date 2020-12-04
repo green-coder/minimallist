@@ -7,6 +7,8 @@ Versions prior to v0.1.0 are considered experimental, their API may change.
 
 ## [Unreleased]
 
+## [0.0.10] - 2020-12-05
+
 ### Added
 
 - String are now treated as first class sequences.
