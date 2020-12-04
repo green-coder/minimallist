@@ -229,6 +229,16 @@
                    [[[1 "a"]] [[1 "a"] [2 "b"]] ['(1 "a") [2 "b"]]]
                    [[] [1] [1 2] [1 "a"] [1 "a" 2 "b"] [1 "a" 2 "b" 3 "c"]]
 
+                   ;; char-cat & char-set
+                   (-> (h/cat (h/char-cat "good")
+                              (h/val \space)
+                              (h/alt (h/char-cat "morning")
+                                     (h/char-cat "afternoon")
+                                     (h/repeat 3 10 (h/char-set "#?!@_*+%"))))
+                       (h/in-string))
+                   ["good morning" "good afternoon" "good #@*+?!"]
+                   ["good" "good " "good day"]
+
                    ;; let / ref
                    (h/let ['pos-even? (h/and (h/fn pos-int?)
                                              (h/fn even?))]

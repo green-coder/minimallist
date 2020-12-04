@@ -232,3 +232,13 @@
   [key]
   {:type :ref
    :key key})
+
+(defn char-cat
+  "A cat sequence of chars, built from a string which contains them."
+  [s]
+  (apply cat (clj/map val s)))
+
+(defn char-set
+  "A set of chars, built from a string which contains them."
+  [s]
+  (enum (clj/set s)))

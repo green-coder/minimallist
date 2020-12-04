@@ -354,6 +354,15 @@
   (tcg/sample (gen fn-simple-keyword?))
   (tcg/sample (gen fn-qualified-keyword?))
 
+  (tcg/sample (gen (-> (h/cat (h/char-cat "good")
+                              (h/val \space)
+                              (h/alt (h/char-cat "morning")
+                                     (h/char-cat "afternoon")
+                                     (h/repeat 3 10 (h/char-set "#?!@_*+%"))))
+                       (h/in-string)))
+              100)
+
+
   #__)
 
 (deftest gen-test
