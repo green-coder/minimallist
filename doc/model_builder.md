@@ -138,8 +138,8 @@ identified via their key or their index in the sequence.
          (h/fn string?))
 ```
 
-`h/list` and `h/vector` are shortcuts to define at the same time a `:sequence` node
-(i.e. a `h/tuple`) with a `:coll-type` set to `:list` or `:vector`.
+`h/list`, `h/vector` and `h/string-tuple` are shortcuts to define at the same time a `:sequence` node
+(i.e. a `h/tuple`) with a `:coll-type` set to `:list`, `:vector` or `:string`.
 
 ```clojure
 ;; A list containing an integer followed by a string.
@@ -149,6 +149,12 @@ identified via their key or their index in the sequence.
 ;; A vector containing an integer followed by a string.
 (h/vector [:first (h/fn int?)]
           (h/fn string?))
+
+;; A string containing an operator char followed by a digit char.
+;; Notice the convenient char-set helper.
+(h/string-tuple [:first (h/enum #{\* \+ \- \/})]
+                #_(h/enum #{\0 \1 \2 \3 \4 \5 \6 \7 \8 \9})
+                (h/char-set "0123456789"))
 ```
 
 ### Alt
@@ -203,6 +209,18 @@ We can specify the type of collection used to contain a sequence.
 (-> (h/cat (h/? (h/fn int?))
            (h/fn string?))
     h/in-list)
+
+;; A model for chars inside a string, an interesting alternative to regex.
+;; Notice the convenient char-cat and char-set helper functions.
+(-> (h/cat (h/char-cat "My favorite number is ")
+           (h/char-set "123456789")
+           (h/repeat 0 2 (h/char-set "0123456789"))
+           (h/char-cat " and my favorite color is ")
+           (h/alt (h/char-cat "red")
+                  (h/char-cat "green")
+                  (h/char-cat "blue"))
+           (h/val \.))
+    h/in-string)
 ```
 
 When a sequence is inside another sequence, it is considered inlined by default.

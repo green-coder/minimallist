@@ -11,6 +11,7 @@ Versions prior to v0.1.0 are considered experimental, their API may change.
 
 - String are now treated as first class sequences.
 - Added some helper functions for specifying string-based grammars.
+- Updated the documentation about strings, char-cat and char-set.
 
 ## [0.0.9] - 2020-11-29
 
