@@ -197,11 +197,13 @@
 (defn repeat
   "Sequence model of a repetition of a model.
    If elements-model is a sequence model, it is inlined by default."
-  [min max elements-model]
-  {:type :repeat
-   :min min
-   :max max
-   :elements-model elements-model})
+  ([times elements-model]
+   (repeat times times elements-model))
+  ([min max elements-model]
+   {:type :repeat
+    :min min
+    :max max
+    :elements-model elements-model}))
 
 (defn ?
   "Sequence model of a model being either absent or present."

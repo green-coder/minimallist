@@ -7,6 +7,10 @@ Versions prior to v0.1.0 are considered experimental, their API may change.
 
 ## [Unreleased]
 
+### Added
+
+- Added one more arity to `h/repeat`, for a fixed number of repeat where min and max are the same.
+
 ## [0.0.10] - 2020-12-05
 
 ### Added
