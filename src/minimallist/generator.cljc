@@ -41,6 +41,10 @@
   fn-string? (-> (h/fn string?)
                  (h/with-test-check-gen gen/string-alphanumeric)))
 
+(def ^{:doc "A model that matches chars and generates an alphanumeric char."}
+  fn-char? (-> (h/fn char?)
+               (h/with-test-check-gen gen/char-alphanumeric)))
+
 (def ^{:doc "A model that matches and generates symbols with or without a namespace."}
   fn-symbol? (-> (h/fn symbol?)
                  (h/with-test-check-gen (gen/one-of [gen/symbol gen/symbol-ns]))))
@@ -436,55 +440,56 @@
 
         (:sequence-of :sequence) (let [budget (max 0 (dec budget)) ; the collection itself costs 1
                                        entries (:entries model)
-                                       coll-gen (if entries
-                                                  ; :sequence ... count-model is not used
-                                                  (gen/bind (budget-split-gen budget (mapv (comp ::min-cost :model) entries))
-                                                            (fn [budgets]
-                                                              (apply gen/tuple (mapv (fn [entry budget]
-                                                                                       (generator context (:model entry) budget))
-                                                                                     entries budgets))))
-                                                  ; :sequence-of ... count-model and/or elements-model might be used
-                                                  (let [count-model (:count-model model)
-                                                        elements-model (:elements-model model)
-                                                        elm-min-cost (::min-cost elements-model)
-                                                        coll-max-size (int (/ budget elm-min-cost))
-                                                        coll-size-gen (if count-model
-                                                                        (generator context count-model 0)
-                                                                        (rec-coll-size-gen coll-max-size))]
-                                                    (if elements-model
-                                                      (let [budgets-gen (gen/bind coll-size-gen
-                                                                                  (fn [coll-size]
-                                                                                    (let [min-costs (repeat coll-size elm-min-cost)]
-                                                                                      (budget-split-gen budget min-costs))))]
-                                                        (gen/bind budgets-gen
-                                                                  (fn [budgets]
-                                                                    (apply gen/tuple
-                                                                           (mapv (partial generator context elements-model)
-                                                                                 budgets)))))
-                                                      (gen/bind coll-size-gen
-                                                                (fn [coll-size]
-                                                                  (gen/vector gen/any coll-size))))))
-                                       inside-list?-gen (case (:coll-type model)
-                                                          :list (gen/return true)
-                                                          :vector (gen/return false)
-                                                          (gen/no-shrink gen/boolean))
-                                       seq-gen (gen/fmap (fn [[coll inside-list?]]
-                                                           (cond->> coll
-                                                             inside-list? (apply list)))
-                                                         (gen/tuple coll-gen inside-list?-gen))]
-                                   (cond->> seq-gen
+                                       seq-gen (if entries
+                                                 ; :sequence ... count-model is not used
+                                                 (gen/bind (budget-split-gen budget (mapv (comp ::min-cost :model) entries))
+                                                           (fn [budgets]
+                                                             (apply gen/tuple (mapv (fn [entry budget]
+                                                                                      (generator context (:model entry) budget))
+                                                                                    entries budgets))))
+                                                 ; :sequence-of ... count-model and/or elements-model might be used
+                                                 (let [count-model (:count-model model)
+                                                       elements-model (:elements-model model)
+                                                       elm-min-cost (::min-cost elements-model)
+                                                       coll-max-size (int (/ budget elm-min-cost))
+                                                       coll-size-gen (if count-model
+                                                                       (generator context count-model 0)
+                                                                       (rec-coll-size-gen coll-max-size))]
+                                                   (if elements-model
+                                                     (let [budgets-gen (gen/bind coll-size-gen
+                                                                                 (fn [coll-size]
+                                                                                   (let [min-costs (repeat coll-size elm-min-cost)]
+                                                                                     (budget-split-gen budget min-costs))))]
+                                                       (gen/bind budgets-gen
+                                                                 (fn [budgets]
+                                                                   (apply gen/tuple
+                                                                          (mapv (partial generator context elements-model)
+                                                                                budgets)))))
+                                                     (gen/bind coll-size-gen
+                                                               (fn [coll-size]
+                                                                 (gen/vector gen/any coll-size))))))
+                                       contained-seq-gen (gen/fmap (fn [[coll inside-list?]]
+                                                                     (case (:coll-type model)
+                                                                       :list (apply list coll)
+                                                                       :vector coll
+                                                                       :string (apply str coll)
+                                                                       (cond->> coll
+                                                                         inside-list? (apply list))))
+                                                                   (gen/tuple seq-gen (gen/no-shrink gen/boolean)))]
+                                   (cond->> contained-seq-gen
                                      (contains? model :condition-model) (gen/such-that (partial #'m/-valid? context (:condition-model model)))))
 
-        (:cat :repeat) (cond->> (gen/bind gen/boolean
-                                          (fn [random-bool]
-                                            (let [gen (sequence-generator context (dissoc model :inlined) budget)
-                                                  inside-list? (case (:coll-type model)
-                                                                 :list true
-                                                                 :vector false
-                                                                 random-bool)]
-                                              (cond->> gen
-                                                inside-list? (gen/fmap (partial apply list))))))
-                                (contains? model :condition-model) (gen/such-that (partial #'m/-valid? context (:condition-model model))))
+        (:cat :repeat) (let [seq-gen (sequence-generator context (dissoc model :inlined) budget)
+                             contained-seq-gen (gen/fmap (fn [[coll inside-list?]]
+                                                          (case (:coll-type model)
+                                                            :list (apply list coll)
+                                                            :vector coll
+                                                            :string (apply str coll)
+                                                            (cond->> coll
+                                                              inside-list? (apply list))))
+                                                         (gen/tuple seq-gen (gen/no-shrink gen/boolean)))]
+                         (cond->> contained-seq-gen
+                           (contains? model :condition-model) (gen/such-that (partial #'m/-valid? context (:condition-model model)))))
 
         :let (generator (#'m/comp-bindings context (:bindings model)) (:body model) budget)
 

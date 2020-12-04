@@ -98,6 +98,10 @@
                    ['(1 2 3) [1 2 3] `(1 2 ~3)]
                    ['(1 :a) #{1 2 3} {:a 1, :b 2, :c 3}]
 
+                   (h/sequence-of (h/fn char?))
+                   [""  "hi" "hello"]
+                   [[1 2 3]]
+
                    ;; sequence, with condition
                    (-> (h/sequence-of (h/fn int?))
                        (h/with-condition (h/fn (fn [coll] (= coll (reverse coll))))))
@@ -114,20 +118,30 @@
                    [[1 2 3]]
                    [[1 :a] '(1 2 3) #{1 2 3} `(1 2 ~3)]
 
+                   ;; sequence as a string
+                   (h/string-of (h/enum (set "0123456789abcdef")))
+                   ["03ab4c" "cafe"]
+                   ["coffee" [1 :a] '(1 2 3) #{1 2 3} `(1 2 ~3)]
+
                    ;; sequence with size specified using a model
                    (-> (h/sequence-of (h/fn any?))
                        (h/with-count (h/enum #{2 3})))
-                   ['(1 2) [1 "2"] `(1 ~"2") [1 "2" :3]]
-                   [#{1 "a"} [1 "2" :3 :4]]
+                   ['(1 2) [1 "2"] `(1 ~"2") [1 "2" :3] "hi"]
+                   [#{1 "a"} [1 "2" :3 :4] "hello"]
 
                    ;; sequence with entries (fixed size is implied)
                    (h/tuple (h/fn int?) (h/fn string?))
                    ['(1 "2") [1 "2"] `(1 ~"2")]
                    [#{1 "a"} [1 "2" :3]]
 
+                   ;; sequence with entries in a string
+                   (h/string-tuple (h/val \a) (h/enum #{\b \c}))
+                   ["ab" "ac"]
+                   [[\a \b] #{\a \b}]
+
                    ;; alt
                    (h/alt [:int (h/fn int?)]
-                          [:strings (h/cat (h/fn string?))])
+                          [:strings (h/vector-of (h/fn string?))])
                    [1 ["1"]]
                    [[1] "1" :1 [:1]]
 
@@ -152,6 +166,12 @@
                    [[1 "2" 3] [1 :2 3] [1 ["a" :b] 3]]
                    [[1 "a" :b 3]]
 
+                   ;; cat & repeat - a color string
+                   (-> (h/cat (h/val \#)
+                              (h/repeat 6 6 (h/enum (set "0123456789abcdefABCDEF")))))
+                   ["#000000" "#af4Ea5"]
+                   ["000000" "#cafe" "#coffee"]
+
                    ;; cat of cat, the inner cat is implicitly inlined
                    (-> (h/cat (h/fn int?)
                               (h/cat (h/fn int?)))
@@ -171,15 +191,20 @@
                    [[] [1] [1 2] '() '(1) '(2 3)]
                    [[1 2 3] '(1 2 3)]
 
+                   ;; repeat - inside a list
+                   (h/in-list (h/repeat 0 2 (h/fn int?)))
+                   ['() '(1) '(2 3)]
+                   [[] [1] [1 2] [1 2 3] '(1 2 3)]
+
                    ;; repeat - inside a vector
                    (h/in-vector (h/repeat 0 2 (h/fn int?)))
                    [[] [1] [1 2]]
                    [[1 2 3] '() '(1) '(2 3) '(1 2 3)]
 
-                   ;; repeat - inside a list
-                   (h/in-list (h/repeat 0 2 (h/fn int?)))
-                   ['() '(1) '(2 3)]
-                   [[] [1] [1 2] [1 2 3] '(1 2 3)]
+                   ;; repeat - inside a string
+                   (h/in-string (h/repeat 4 6 (h/fn char?)))
+                   ["hello"]
+                   ["" "hi" [] [1] '(1 2 3)]
 
                    ;; repeat - min > 0
                    (h/repeat 2 3 (h/fn int?))
@@ -384,11 +409,14 @@
                        (h/with-count (h/val 3)))
                    [[1 2] :invalid
                     [1 2 3] [1 2 3]
-                    [1 2 3 4] :invalid]
+                    [1 2 3 4] :invalid
+                    "12" :invalid
+                    "123" (into [] "123")
+                    "1234" :invalid]
 
                    ;; alt - not inside a sequence
                    (h/alt [:number (h/fn int?)]
-                          [:sequence (h/cat (h/fn string?))])
+                          [:sequence (h/vector-of (h/fn string?))])
                    [1 [:number 1]
                     ["1"] [:sequence ["1"]]
                     [1] :invalid

@@ -7,6 +7,10 @@ Versions prior to v0.1.0 are considered experimental, their API may change.
 
 ## [Unreleased]
 
+### Added
+
+- String are now treated as first class sequences.
+
 ## [0.0.9] - 2020-11-29
 
 ### Fixed
@@ -14,7 +18,7 @@ Versions prior to v0.1.0 are considered experimental, their API may change.
 - A bug which selected the wrong context in recursive `let` nodes.
 - A bug on the generator of optional map entries - Thx to Andrew Foltz-Morrison for the bug report and the fix.
 
-### Change
+### Changed
 
 - `describe` on a set now returns a vector instead of a set - it makes it easier to work with
   because its elements are ordered.

@@ -54,6 +54,10 @@
       (throw (ex-info (str "Cannot resolve reference " key)
                       {:context context, :key key})))))
 
+(defn- s-sequential? [x]
+  (or (sequential? x)
+      (string? x)))
+
 (declare -valid?)
 
 (defn- left-overs
@@ -118,10 +122,11 @@
                                  (every? (partial -valid? context (:entry-model model)) data))
                         (implies (contains? model :condition-model)
                                  (-valid? context (:condition-model model) data)))
-    (:sequence-of :sequence) (and (sequential? data)
+    (:sequence-of :sequence) (and (s-sequential? data)
                                   ((-> (:coll-type model :any) {:any any?
                                                                 :list seq?
-                                                                :vector vector?}) data)
+                                                                :vector vector?
+                                                                :string string?}) data)
                                   (implies (contains? model :entries)
                                            (and (= (count (:entries model)) (count data))
                                                 (every? identity (map (fn [entry data-element]
@@ -134,10 +139,11 @@
                                            (every? (partial -valid? context (:elements-model model)) data))
                                   (implies (contains? model :condition-model)
                                            (-valid? context (:condition-model model) data)))
-    (:cat :repeat) (and (sequential? data)
+    (:cat :repeat) (and (s-sequential? data)
                         ((-> (:coll-type model :any) {:any any?
                                                       :list seq?
-                                                      :vector vector?}) data)
+                                                      :vector vector?
+                                                      :string string?}) data)
                         (some nil? (left-overs context (dissoc model :inlined) (seq data)))
                         (implies (contains? model :count-model)
                                  (-valid? context (:count-model model) (count data)))
@@ -259,7 +265,7 @@
              {:valid? valid?
               :desc (into {} (map (fn [[k v]] [k (:desc v)])) entries)})
            {:valid? false})
-    (:sequence-of :sequence) (if (sequential? data)
+    (:sequence-of :sequence) (if (s-sequential? data)
                                (let [entries (into [] (cond
                                                         (contains? model :elements-model) (map (fn [data-element]
                                                                                                  (-describe context (:elements-model model) data-element))
@@ -271,7 +277,8 @@
                                                         :else (map (fn [x] {:desc x}) data)))
                                      valid? (and (({:any any?
                                                     :list seq?
-                                                    :vector vector?} (:coll-type model :any)) data)
+                                                    :vector vector?
+                                                    :string string?} (:coll-type model :any)) data)
                                                  (implies (contains? model :entries)
                                                           (and (= (count (:entries model)) (count data))
                                                                (every? :valid? entries)))
@@ -304,10 +311,11 @@
              {:valid? false}
              {:valid? true
               :desc [key (:desc entry)]}))
-    (:cat :repeat) (if (and (sequential? data)
+    (:cat :repeat) (if (and (s-sequential? data)
                             ((-> (:coll-type model :any) {:any any?
                                                           :list seq?
-                                                          :vector vector?}) data)
+                                                          :vector vector?
+                                                          :string string?}) data)
                             (implies (contains? model :count-model)
                                      (:valid? (-describe context (:count-model model) (count data)))))
                      (let [seq-descriptions (filter (comp nil? :rest-seq)

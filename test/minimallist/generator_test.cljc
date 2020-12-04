@@ -5,7 +5,7 @@
             [minimallist.core :refer [valid?]]
             [minimallist.helper :as h]
             [minimallist.util :as util]
-            [minimallist.generator :as mg :refer [gen fn-any? fn-int? fn-string?
+            [minimallist.generator :as mg :refer [gen fn-any? fn-int? fn-string? fn-char?
                                                   fn-symbol? fn-simple-symbol? fn-qualified-symbol?
                                                   fn-keyword? fn-simple-keyword? fn-qualified-keyword?]]))
 
@@ -405,15 +405,35 @@
              (some list? sample)
              (some vector? sample))))
 
+  (let [model (h/list fn-int? fn-string?)
+        sample (tcg/sample (gen model))]
+    (is (and (every? (partial valid? model) sample)
+             (every? list? sample))))
+
   (let [model (h/vector fn-int? fn-string?)
         sample (tcg/sample (gen model))]
     (is (and (every? (partial valid? model) sample)
              (every? vector? sample))))
 
-  (let [model (h/list fn-int? fn-string?)
+  (let [model (h/string-tuple fn-char? fn-char?)
+        sample (tcg/sample (gen model))]
+    (is (and (every? (partial valid? model) sample)
+             (every? string? sample))))
+
+  (let [model (h/in-list (h/cat fn-int? fn-string?))
         sample (tcg/sample (gen model))]
     (is (and (every? (partial valid? model) sample)
              (every? list? sample))))
+
+  (let [model (h/in-vector (h/cat fn-int? fn-string?))
+        sample (tcg/sample (gen model))]
+    (is (and (every? (partial valid? model) sample)
+             (every? vector? sample))))
+
+  (let [model (h/in-string (h/cat fn-char? fn-char?))
+        sample (tcg/sample (gen model))]
+    (is (and (every? (partial valid? model) sample)
+             (every? string? sample))))
 
   (let [model (h/alt fn-int? fn-string?)]
     (is (every? (partial valid? model)

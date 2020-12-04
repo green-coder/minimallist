@@ -63,17 +63,23 @@
   [model generator]
   (assoc model :test.check/generator generator))
 
+(defn in-list
+  "Specifies the :coll-type to be a list.
+   To be used on sequence model nodes, namely :sequence-of, :sequence, :cat and :repeat."
+  [sequence-model]
+  (assoc sequence-model :coll-type :list))
+
 (defn in-vector
   "Specifies the :coll-type to be a vector.
    To be used on sequence model nodes, namely :sequence-of, :sequence, :cat and :repeat."
   [sequence-model]
   (assoc sequence-model :coll-type :vector))
 
-(defn in-list
-  "Specifies the :coll-type to be a list.
+(defn in-string
+  "Specifies the :coll-type to be a string.
    To be used on sequence model nodes, namely :sequence-of, :sequence, :cat and :repeat."
   [sequence-model]
-  (assoc sequence-model :coll-type :list))
+  (assoc sequence-model :coll-type :string))
 
 (defn not-inlined
   "Specify that this sequence model should not be inlined within its parent model.
@@ -142,6 +148,11 @@
   [elements-model]
   (-> (sequence-of elements-model) in-vector))
 
+(defn string-of
+  "Same as sequence-of, but inside a string."
+  [elements-model]
+  (-> (sequence-of elements-model) in-string))
+
 (defn map
   "Model of a hashmap with specified models for each of its entries."
   ([]
@@ -164,6 +175,11 @@
   "Same as tuple, but inside a vector."
   [& entries]
   (-> (apply tuple entries) in-vector))
+
+(defn string-tuple
+  "Same as tuple, but inside a string."
+  [& entries]
+  (-> (apply tuple entries) in-string))
 
 (defn alt
   "Model of a choice (alternative) between different possible entries."
