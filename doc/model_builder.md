@@ -110,8 +110,8 @@ outside of a `:condition-model` field, you need to add your own generator to the
 (h/sequence-of (h/fn int?))
 ```
 
-`list-of` and `vector-of` are shortcuts to define at the same time a `:sequence-of` node
-with a `:coll-type` set to `:list` or `:vector`.
+`list-of`, `vector-of` and `string-of` are shortcuts to define at the same time a `:sequence-of` node
+with a `:coll-type` set to `:list`, `:vector` or `:string`.
 
 ```clojure
 ;; A list of numbers.
@@ -119,6 +119,9 @@ with a `:coll-type` set to `:list` or `:vector`.
 
 ;; A vector of numbers.
 (h/vector-of (h/fn int?))
+
+;; A string of chars (i.e. the only thing a string can contain)
+(h/string-of (h/fn char?))
 ```
 
 ### Collections with entries
